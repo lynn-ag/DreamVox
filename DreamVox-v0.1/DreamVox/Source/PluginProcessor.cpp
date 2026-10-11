@@ -5,10 +5,11 @@
 namespace
 {
 constexpr float pi = 3.14159265358979323846f;
-juce::AudioParameterFloat* knob (const char* id, const char* name, float lo, float hi, float def, const char* unit = "")
+std::unique_ptr<juce::AudioParameterFloat> knob (const char* id, const char* name, float lo, float hi, float def, const char* unit = "")
 {
-    return new juce::AudioParameterFloat ({id, 1}, name,
-        juce::NormalisableRange<float> (lo, hi), def, unit);
+    return std::make_unique<juce::AudioParameterFloat> (juce::ParameterID {id, 1}, name,
+        juce::NormalisableRange<float> (lo, hi), def,
+        juce::AudioParameterFloatAttributes().withLabel (unit));
 }
 }
 
@@ -23,7 +24,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout DreamVoxAudioProcessor::crea
     p.add (knob ("deess", "DE-ESS", 0.0f, 100.0f, 28.0f, "%"));
     p.add (knob ("warmth", "WARMTH", 0.0f, 100.0f, 14.0f, "%"));
     p.add (knob ("output", "OUTPUT", -12.0f, 12.0f, 0.0f, " dB"));
-    p.add (new juce::AudioParameterBool ({"bypass", 1}, "BYPASS", false));
+    p.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID {"bypass", 1}, "BYPASS", false));
     return p;
 }
 
