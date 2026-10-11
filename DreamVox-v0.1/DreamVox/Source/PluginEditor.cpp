@@ -10,7 +10,6 @@ const juce::Colour ink (0xff11121b), panel (0xff191b28), muted (0xff9296ac), pea
 DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    setSize (760, 510);
     for (int i=0;i<8;++i)
     {
         auto* slider=controls.add (new juce::Slider());
@@ -35,6 +34,9 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
     bypass.setColour (juce::ToggleButton::tickDisabledColourId, muted);
     bypassAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.parameters, "bypass", bypass);
     addAndMakeVisible (bypass);
+
+    // setSize synchronously calls resized(), which needs all controls and labels.
+    setSize (760, 510);
 }
 
 void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
@@ -48,7 +50,7 @@ void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (pearl); g.setFont (juce::Font (29.0f, juce::Font::bold)); g.drawText ("DREAMVOX", 34, 24, 270, 40, juce::Justification::left);
     g.setColour (aqua); g.fillRoundedRectangle (34.0f, 73.0f, 28.0f, 3.0f, 1.5f);
     g.setColour (muted); g.setFont (juce::Font (12.5f)); g.drawText ("VOCAL TONE  /  DYNAMICS  /  FINISH", 74, 66, 300, 20, juce::Justification::left);
-    g.setColour (muted); g.setFont (juce::Font (11.0f)); g.drawText ("V0.1  •  R&B / POP VOCAL RACK", 415, 37, 310, 18, juce::Justification::right);
+    g.setColour (muted); g.setFont (juce::Font (11.0f)); g.drawText ("V" JucePlugin_VersionString "  •  R&B / POP VOCAL RACK", 415, 37, 310, 18, juce::Justification::right);
     g.setColour (juce::Colour (0xff252738)); g.fillRoundedRectangle (18.0f, 119.0f, 724.0f, 350.0f, 18.0f);
     g.setColour (juce::Colour (0x2277e2d1)); g.drawRoundedRectangle (18.0f, 119.0f, 724.0f, 350.0f, 18.0f, 1.0f);
     g.setColour (aqua); g.setFont (juce::Font (10.5f, juce::Font::bold)); g.drawText ("TONE", 40, 133, 90, 14, juce::Justification::left);
