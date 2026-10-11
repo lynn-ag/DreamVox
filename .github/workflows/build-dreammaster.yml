@@ -19,12 +19,14 @@ jobs:
       - name: Configure
         run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
       - name: Build plugin and DSP tests
-        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterRender --parallel 2
+        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterRender DreamMasterPreview --parallel 2
       - name: DSP regression tests
         run: |
           New-Item -ItemType Directory -Path validation -Force | Out-Null
           & ./master-build/Release/DreamMasterTests.exe 2>&1 | Tee-Object validation/dsp-tests.txt
           if ($LASTEXITCODE -ne 0) { throw 'DSP regression tests failed' }
+          & ./master-build/DreamMasterPreview_artefacts/Release/DreamMasterPreview.exe validation/DreamMaster-preview.png
+          if ($LASTEXITCODE -ne 0) { throw 'Editor snapshot failed' }
       - name: Validate VST3 and editor
         run: |
           Invoke-WebRequest 'https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip' -OutFile pluginval.zip

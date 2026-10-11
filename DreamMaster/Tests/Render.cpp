@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 // Local test utility: interleaved stereo float32 input/output, supplied sample rate.
 int main(int argc,char** argv)
 {
