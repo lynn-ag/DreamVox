@@ -22,7 +22,8 @@ if ($ExpectEditorCrash) {
     'Original editor access violation reproduced.' | Tee-Object validation/result.txt
 } else {
     if ($result -ne 0) { throw "pluginval failed with exit code $result" }
-    if ($log -notmatch 'Editor' -or $log -notmatch 'ALL TESTS PASSED') { throw 'Missing editor test or final success marker' }
+    $editorPasses = [regex]::Matches($log, '(?m)^Completed tests in pluginval / Editor\r?$').Count
+    if ($editorPasses -ne $repeats -or $log -notmatch '(?m)^SUCCESS\r?$') { throw 'Missing completed editor tests or final SUCCESS marker' }
     'pluginval 1.0.4, strictness 5, three repeats, GUI enabled: PASS.' | Tee-Object validation/result.txt
 }
 $global:LASTEXITCODE = 0
