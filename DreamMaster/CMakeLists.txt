@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.22)
+project(DreamMaster VERSION 0.1.0 LANGUAGES C CXX)
+include(FetchContent)
+FetchContent_Declare(juce GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 8.0.13 GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(juce)
+juce_add_plugin(DreamMaster
+  COMPANY_NAME "DreamVox Audio" BUNDLE_ID "audio.dreamvox.master"
+  PLUGIN_MANUFACTURER_CODE DmVx PLUGIN_CODE DrMs PRODUCT_NAME "DreamMaster"
+  DESCRIPTION "Gentle stereo mastering rack" FORMATS VST3 VST3_CATEGORIES Fx Mastering)
+target_sources(DreamMaster PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+target_compile_features(DreamMaster PUBLIC cxx_std_17)
+target_compile_definitions(DreamMaster PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
+target_link_libraries(DreamMaster PRIVATE juce::juce_audio_utils PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+enable_testing()
+add_executable(DreamMasterTests Tests/EngineTests.cpp)
+target_compile_features(DreamMasterTests PRIVATE cxx_std_17)
+add_test(NAME MasterEngine COMMAND DreamMasterTests)
+add_executable(DreamMasterRender Tests/Render.cpp)
+target_compile_features(DreamMasterRender PRIVATE cxx_std_17)
