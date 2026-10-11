@@ -1,0 +1,65 @@
+name: Build DreamMaster VST3
+on:
+  push:
+    paths: ['DreamMaster/**', '.github/workflows/build-dreammaster.yml']
+  pull_request:
+    paths: ['DreamMaster/**', '.github/workflows/build-dreammaster.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-master:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Configure
+        run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
+      - name: Build plugin and DSP tests
+        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterRender DreamMasterPreview --parallel 2
+      - name: DSP regression tests
+        run: |
+          New-Item -ItemType Directory -Path validation -Force | Out-Null
+          & ./master-build/Release/DreamMasterTests.exe 2>&1 | Tee-Object validation/dsp-tests.txt
+          if ($LASTEXITCODE -ne 0) { throw 'DSP regression tests failed' }
+          & ./master-build/DreamMasterPreview_artefacts/Release/DreamMasterPreview.exe validation/DreamMaster-preview.png
+          if ($LASTEXITCODE -ne 0) { throw 'Editor snapshot failed' }
+      - name: Validate VST3 and editor
+        run: |
+          Invoke-WebRequest 'https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip' -OutFile pluginval.zip
+          if ((Get-FileHash pluginval.zip -Algorithm SHA256).Hash -ne 'C08E61CE3B96DB41636F8EC7E76F4C7E2C13EBDAC7FA1B5A1F52B4F32EC715AB') { throw 'pluginval checksum mismatch' }
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+          $exe = (Get-ChildItem pluginval -Filter pluginval.exe -Recurse | Select-Object -First 1).FullName
+          $bundle = (Resolve-Path 'master-build/DreamMaster_artefacts/Release/VST3/DreamMaster.vst3').Path
+          & $exe --strictness-level 5 --repeat 3 --random-seed 12345 --timeout-ms 60000 --validate $bundle 2>&1 | Tee-Object validation/pluginval.txt
+          if ($LASTEXITCODE -ne 0) { throw 'pluginval failed' }
+          $log = Get-Content validation/pluginval.txt -Raw
+          if ([regex]::Matches($log, '(?m)^Completed tests in pluginval / Editor\r?$').Count -ne 3 -or $log -notmatch '(?m)^SUCCESS\r?$') { throw 'Missing completed editor tests or SUCCESS' }
+      - name: Package
+        run: |
+          New-Item -ItemType Directory -Path staging,tools -Force | Out-Null
+          Copy-Item master-build/DreamMaster_artefacts/Release/VST3/DreamMaster.vst3 staging -Recurse
+          Copy-Item DreamMaster/INSTALL.txt,DreamMaster/README.md staging
+          Copy-Item validation staging -Recurse
+          "Source: ${{ github.sha }}`nBuild: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" | Set-Content staging/BUILD.txt
+          Get-FileHash staging/DreamMaster.vst3/Contents/x86_64-win/DreamMaster.vst3 | Format-List | Out-File staging/SHA256.txt
+          Copy-Item master-build/Release/DreamMasterRender.exe,master-build/Release/DreamMasterTests.exe tools
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: DreamMaster-Windows-x64-VST3
+          path: staging/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: DreamMaster-test-tools
+          path: tools/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: DreamMaster-validation
+          path: validation/
+          if-no-files-found: warn
