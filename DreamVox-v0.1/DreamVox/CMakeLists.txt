@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DreamVox VERSION 0.1.0 LANGUAGES C CXX)
+project(DreamVox VERSION 0.1.1 LANGUAGES C CXX)
 
 if(DEFINED JUCE_DIR AND EXISTS "${JUCE_DIR}/CMakeLists.txt")
   add_subdirectory("${JUCE_DIR}" JUCE)

@@ -1,31 +1,23 @@
-DREAMVOX VST3 — FIRST BUILD
+DREAMVOX 0.1.1 - WINDOWS x64 VST3
 
-This package contains the DreamVox JUCE project and a Windows build workflow.
-The current environment could not produce or test a Windows VST3 binary.
-
-AUTOMATED WINDOWS BUILD
-1. Open https://github.com/lynn-ag/DreamVox/actions
-2. Select Build DreamVox VST3 > Run workflow > Run workflow.
-   Builds also start automatically when changes are pushed.
-3. Wait for a green check, open that run, and scroll to Artifacts.
-   While signed into GitHub, download DreamVox-Windows-VST3.
-   Downloads are kept for 30 days; run the workflow again if one expires.
-4. Extract the ZIP and copy the entire DreamVox.vst3 folder into:
+INSTALL
+1. Close your DAW and pluginval.
+2. Extract this ZIP.
+3. Move your old DreamVox.vst3 folder out of the VST3 scan folders as a backup.
+4. Copy the entire new DreamVox.vst3 folder to:
    C:\Program Files\Common Files\VST3\
-   Keep its Contents folder and all files inside it together.
-5. Restart FL Studio and scan for plugins. Search for “DreamVox”.
+   Keep the Contents folder and everything inside it together.
+   Approve Windows administrator permission if asked.
+5. Restart your DAW, rescan plugins, and open DreamVox.
+   The editor should show V0.1.1.
 
-IF A BUILD FAILS
-Open the failed run, select Windows x64 Release, and expand the red step.
-Share the first error and the nearby lines when asking for help.
-If the workflow is missing, check that .github/workflows/build-dreamvox.yml
-is at the repository root, not inside DreamVox-v0.1/DreamVox.
+VALIDATION
+The build workflow only creates this download after pluginval 1.0.4 passes
+at strictness level 5 with GUI tests enabled and three repeats.
+See validation/pluginval.txt for the actual results and BUILD.txt for source.
+These tests do not guarantee compatibility with every DAW or audio device.
 
-If Windows asks for administrator permission when copying to the VST3 folder,
-approve the copy. The plugin is a 64-bit VST3.
-
-SIGNAL FLOW
-Low / Body / Air EQ > De-ess > Compression > Warmth > Output
-
-This is an early prototype. Check gain staging and audition every control on
-your own voice before using it on a release.
+CHANGE
+Create all editor controls before setting the editor size. Previously the
+initial resize accessed empty arrays while the editor was being constructed.
+Parameter IDs, plugin IDs, and saved-state format are unchanged.
