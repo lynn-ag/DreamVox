@@ -8,15 +8,18 @@ saved plug-in state in a custom dark violet and aqua interface.
 ## Build
 
 The project pins JUCE 8.0.13. On Windows with Visual Studio 2022 and CMake,
-configure and build with:
+configure and build from the repository root with:
 
 ```powershell
-cmake -S DreamVox -B build -G "Visual Studio 17 2022" -A x64
+cmake -S DreamVox-v0.1/DreamVox -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release --target DreamVox_VST3
 ```
 
 The automated workflow in `.github/workflows/build-dreamvox.yml` does the
-Windows build and publishes a ZIP artifact. See [INSTALL.txt](INSTALL.txt) for
+Windows x64 Release build on pushes, pull requests, or a manual run and uploads
+a ZIP artifact named `DreamVox-Windows-VST3`, retained for 30 days.
+The workflow lives at the repository root, alongside `DreamVox-v0.1`.
+See [INSTALL.txt](INSTALL.txt) for
 the no-local-toolchain path and installation steps.
 
 ## Controls

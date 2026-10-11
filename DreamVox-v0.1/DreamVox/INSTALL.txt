@@ -4,12 +4,22 @@ This package contains the DreamVox JUCE project and a Windows build workflow.
 The current environment could not produce or test a Windows VST3 binary.
 
 AUTOMATED WINDOWS BUILD
-1. Put the contents of this package in a GitHub repository.
-2. Open Actions > Build DreamVox VST3 > Run workflow.
-3. Download the DreamVox-Windows-VST3 artifact from the completed run.
-4. Extract DreamVox.vst3 into:
+1. Open https://github.com/lynn-ag/DreamVox/actions
+2. Select Build DreamVox VST3 > Run workflow > Run workflow.
+   Builds also start automatically when changes are pushed.
+3. Wait for a green check, open that run, and scroll to Artifacts.
+   While signed into GitHub, download DreamVox-Windows-VST3.
+   Downloads are kept for 30 days; run the workflow again if one expires.
+4. Extract the ZIP and copy the entire DreamVox.vst3 folder into:
    C:\Program Files\Common Files\VST3\
+   Keep its Contents folder and all files inside it together.
 5. Restart FL Studio and scan for plugins. Search for “DreamVox”.
+
+IF A BUILD FAILS
+Open the failed run, select Windows x64 Release, and expand the red step.
+Share the first error and the nearby lines when asking for help.
+If the workflow is missing, check that .github/workflows/build-dreamvox.yml
+is at the repository root, not inside DreamVox-v0.1/DreamVox.
 
 If Windows asks for administrator permission when copying to the VST3 folder,
 approve the copy. The plugin is a 64-bit VST3.
