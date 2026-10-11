@@ -1,0 +1,21 @@
+DREAMVOX VST3 — FIRST BUILD
+
+This package contains the DreamVox JUCE project and a Windows build workflow.
+The current environment could not produce or test a Windows VST3 binary.
+
+AUTOMATED WINDOWS BUILD
+1. Put the contents of this package in a GitHub repository.
+2. Open Actions > Build DreamVox VST3 > Run workflow.
+3. Download the DreamVox-Windows-VST3 artifact from the completed run.
+4. Extract DreamVox.vst3 into:
+   C:\Program Files\Common Files\VST3\
+5. Restart FL Studio and scan for plugins. Search for “DreamVox”.
+
+If Windows asks for administrator permission when copying to the VST3 folder,
+approve the copy. The plugin is a 64-bit VST3.
+
+SIGNAL FLOW
+Low / Body / Air EQ > De-ess > Compression > Warmth > Output
+
+This is an early prototype. Check gain staging and audition every control on
+your own voice before using it on a release.
