@@ -1,31 +1,20 @@
-DREAMVOX VST3 — FIRST BUILD
+DreamVox v0.2 Dreamscape - Windows x64 VST3 preview
 
-This package contains the DreamVox JUCE project and a Windows build workflow.
-The current environment could not produce or test a Windows VST3 binary.
-
-AUTOMATED WINDOWS BUILD
-1. Open https://github.com/lynn-ag/DreamVox/actions
-2. Select Build DreamVox VST3 > Run workflow > Run workflow.
-   Builds also start automatically when changes are pushed.
-3. Wait for a green check, open that run, and scroll to Artifacts.
-   While signed into GitHub, download DreamVox-Windows-VST3.
-   Downloads are kept for 30 days; run the workflow again if one expires.
-4. Extract the ZIP and copy the entire DreamVox.vst3 folder into:
+1. Close FL Studio. Back up your existing DreamVox.vst3 bundle outside all plugin scan folders.
+2. Extract this download. Copy the complete DreamVox.vst3 folder (including Contents) into:
    C:\Program Files\Common Files\VST3\
-   Keep its Contents folder and all files inside it together.
-5. Restart FL Studio and scan for plugins. Search for “DreamVox”.
+   Administrator permission may be needed.
+3. Open FL Studio: Options > Manage plugins (or Options > File settings > Manage plugins).
+   Enable Verify plugins and Rescan previously verified plugins, then Find installed plugins.
+4. Add DreamVox to a Mixer effect slot. The interface should show V0.2 DREAMSCAPE.
+5. Test on a copy of a project: turn knobs, check bypass, close/reopen the editor,
+   then save and reload the project to check settings recall.
 
-IF A BUILD FAILS
-Open the failed run, select Windows x64 Release, and expand the red step.
-Share the first error and the nearby lines when asking for help.
-If the workflow is missing, check that .github/workflows/build-dreamvox.yml
-is at the repository root, not inside DreamVox-v0.1/DreamVox.
+This preview retains v0.1's plugin identity and parameter IDs. It replaces the installed
+v0.1 for testing; do not install both copies in scan folders. Keep the backup.
+To roll back: close FL Studio, replace the v0.2 bundle with the saved v0.1 bundle,
+then rescan. The main branch and existing v0.1 build remain unchanged.
 
-If Windows asks for administrator permission when copying to the VST3 folder,
-approve the copy. The plugin is a 64-bit VST3.
-
-SIGNAL FLOW
-Low / Body / Air EQ > De-ess > Compression > Warmth > Output
-
-This is an early prototype. Check gain staging and audition every control on
-your own voice before using it on a release.
+BUILD.txt records the source commit, Actions run and binary SHA256.
+pluginval.log records automated validation. An automated pass is not a guarantee
+of FL Studio compatibility; the host smoke test above is still required.
