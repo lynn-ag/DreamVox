@@ -28,6 +28,28 @@ jobs:
       - name: Build VST3
         run: cmake --build build --config Release --target DreamVox_VST3 --parallel 2
 
+      - name: Download pluginval 1.0.4
+        run: |
+          Invoke-WebRequest -Uri 'https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip' -OutFile pluginval.zip
+          Expand-Archive -LiteralPath pluginval.zip -DestinationPath pluginval
+
+      - name: Validate VST3 with pluginval
+        run: |
+          $validator = Get-ChildItem pluginval -Recurse -Filter pluginval.exe | Select-Object -First 1
+          if (!$validator) { throw 'pluginval.exe not found' }
+          $bundle = (Resolve-Path 'build/DreamVox_artefacts/Release/VST3/DreamVox.vst3').Path
+          & $validator.FullName --strictness-level 5 --validate $bundle 2>&1 | Tee-Object -FilePath pluginval.log
+          if ($LASTEXITCODE -ne 0) { throw "pluginval failed with exit code $LASTEXITCODE" }
+
+      - name: Upload validation log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: DreamVox-pluginval-log
+          path: pluginval.log
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Prepare downloadable plug-in
         run: |
           $bundle = 'build/DreamVox_artefacts/Release/VST3/DreamVox.vst3'
@@ -38,11 +60,17 @@ jobs:
           New-Item -ItemType Directory -Path staging -Force | Out-Null
           Copy-Item -LiteralPath $bundle -Destination staging -Recurse
           Copy-Item -LiteralPath 'DreamVox-v0.1/DreamVox/INSTALL.txt' -Destination staging
+          Copy-Item -LiteralPath pluginval.log -Destination staging
+          $hash = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash
+          "DreamVox 0.2.0 Windows x64 Release" | Set-Content staging/BUILD.txt
+          "Source: ${{ github.sha }}" | Add-Content staging/BUILD.txt
+          "Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" | Add-Content staging/BUILD.txt
+          "Binary SHA256: $hash" | Add-Content staging/BUILD.txt
 
       - name: Upload Windows VST3
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: DreamVox-Windows-VST3
+          name: DreamVox-v0.2-Windows-x64-VST3
           path: staging/
           if-no-files-found: error
           retention-days: 30
