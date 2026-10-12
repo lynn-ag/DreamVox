@@ -7,6 +7,7 @@ class DreamVoxAudioProcessorEditor final : public juce::AudioProcessorEditor, pr
 {
 public:
     explicit DreamVoxAudioProcessorEditor (DreamVoxAudioProcessor&);
+    ~DreamVoxAudioProcessorEditor() override;
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -19,6 +20,7 @@ private:
     void paintSelectedModuleMonitor (juce::Graphics&);
 
     DreamVoxAudioProcessor& processor;
+    std::unique_ptr<juce::LookAndFeel_V4> neonLookAndFeel;
     juce::Image neonArtwork;
     juce::OwnedArray<juce::Slider> controls;
     juce::OwnedArray<juce::Label> sectionLabels;
