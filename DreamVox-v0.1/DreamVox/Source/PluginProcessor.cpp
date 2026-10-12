@@ -55,6 +55,7 @@ void DreamVoxAudioProcessor::prepareToPlay (double sr, int)
     reverb.reset();
     delayBuffer.setSize (2, static_cast<int> (sampleRate * 2.0) + 4);
     delayBuffer.clear();
+    wetBuffer.setSize (2, 8192);
     delayWrite = 0;
     for (auto* s : { &delayWet, &reverbWet, &doubleWet })
         s->reset (sampleRate, 0.03);
