@@ -3,6 +3,22 @@
 #include <array>
 #include <vector>
 
+// Pure JUCE artwork: these widgets are independently clickable, not PNG hotspots.
+class DreamVoxEffectCard final : public juce::TextButton
+{
+public:
+    int moduleIndex = 0;
+    bool selected = false;
+    void paintButton (juce::Graphics&, bool highlighted, bool down) override;
+};
+
+class DreamVoxKnobLookAndFeel final : public juce::LookAndFeel_V4
+{
+public:
+    void drawRotarySlider (juce::Graphics&, int, int, int, int, float, float,
+                           float, juce::Slider&) override;
+};
+
 class DreamVoxAudioProcessorEditor final : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -19,11 +35,12 @@ private:
     void paintSelectedModuleMonitor (juce::Graphics&);
 
     DreamVoxAudioProcessor& processor;
+    DreamVoxKnobLookAndFeel knobLook;
     juce::Image neonArtwork;
     juce::OwnedArray<juce::Slider> controls;
     juce::OwnedArray<juce::Label> sectionLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> attachments;
-    std::array<juce::TextButton, 8> moduleButtons;
+    std::array<DreamVoxEffectCard, 8> moduleButtons;
     juce::ComboBox presetSelector, effectPresetSelector;
     juce::ToggleButton bypass {"BYPASS"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
