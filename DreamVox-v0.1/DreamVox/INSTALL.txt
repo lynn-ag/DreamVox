@@ -6,7 +6,7 @@ from the original DreamVox. Your original DreamVox.vst3 remains separate.
 INSTALL THE CORRECT BUILD
 1. Open https://github.com/lynn-ag/DreamVox/actions
 2. Find the LATEST successful "Build DreamVox 5 Neon VST3" run.
-   Its branch must be "feature/dreamvox5-functional-effects".
+   Its branch must be "feature/dreamvox5-velvet-ui".
 3. Under Artifacts, download "DreamVox-5-Neon-Windows-VST3".
 4. Extract the ZIP. Copy the WHOLE folder "DreamVox 5.vst3" into
    C:\Program Files\Common Files\VST3\
@@ -18,8 +18,8 @@ INSTALL THE CORRECT BUILD
 7. Open DreamVox 5 as an effect on a mixer insert. Play audio through it.
 
 HOW TO USE
-- Eight real module tabs: CLEAN, COMP, EQ, DE-ESS, TONE, SPACE, ECHO, DOUBLER.
-  Click a tab to open its own adjustable DSP parameters.
+- Eight clickable neon jewel cards: CLEAN, COMP, EQ, DE-ESS, TONE,
+  SPACE, ECHO and DOUBLER. Click a card to open its own DSP controls.
 - "Choose an effect preset..." applies ONLY that module's parameters.
   Each of the 8 modules has 4 relevant presets (32 module presets).
 - "Select a chain preset..." applies one of the 24 whole-vocal presets.
@@ -31,8 +31,9 @@ HOW TO USE
   attack/release, de-esser detector frequency and doubler spread work
   through the audio processor.
 - Your changes to parameters are saved with the FL Studio project.
-- The image is decorative artwork only. Functional buttons and meters
-  are JUCE controls painted on top of it.
+- Moonlit imagery is cropped to the HEADER only. The effect cards,
+  sliders, menus, meters and detail panel are real JUCE components.
+  The background image is decorative and NOT an interactive control.
 
 LIMITATIONS
 - Effect presets are built-in choices, not a save-custom-preset system.
