@@ -29,6 +29,25 @@ int main(int argc,char** argv) {
             require(std::abs(slider->getValue()-parameter->convertFrom0to1(parameter->getValue()))<.03,"Automation did not update knob");
         }
         require(count==expectedKnobs,"Unexpected knob count");
+        #ifndef DREAM_VOX
+        juce::ComboBox* presetMenu=nullptr;
+        for(auto* child:editor->getChildren())
+            if(child->getComponentID()=="masteringPresets")presetMenu=dynamic_cast<juce::ComboBox*>(child);
+        require(presetMenu!=nullptr&&presetMenu->getNumItems()==dream::presetCount,"Missing preset options");
+        for(int index=0;index<dream::presetCount;++index) {
+            presetMenu->setSelectedId(index+1,juce::sendNotificationSync);
+            const auto expected=dream::preset(index);
+            const char* ids[]={"input","bass","clarity","smooth","air","glue","width","drive","ceiling","lowcut"};
+            const double values[]={expected.input,expected.bass,expected.clarity,expected.smooth,expected.air,expected.glue,expected.width,expected.drive,expected.ceiling,expected.lowCut?1.0:0.0};
+            for(size_t i=0;i<std::size(ids);++i)
+                require(std::abs(processor.parameters.getRawParameterValue(ids[i])->load()-values[i])<.011,"Preset menu did not apply settings");
+            juce::MemoryBlock saved;processor.getStateInformation(saved);
+            processor.applyPreset(0);processor.setStateInformation(saved.getData(),int(saved.getSize()));
+            for(size_t i=0;i<std::size(ids);++i)
+                require(std::abs(processor.parameters.getRawParameterValue(ids[i])->load()-values[i])<.011,"Preset state did not recall");
+        }
+        std::cout<<"PASS: all 13 preset menu choices and non-default state recall.\n";
+#endif
         processor.setStateInformation(initial.getData(),int(initial.getSize()));
         editor.reset();editor.reset(processor.createEditor());
         for(auto* child:editor->getChildren())if(auto* slider=dynamic_cast<juce::Slider*>(child)) {

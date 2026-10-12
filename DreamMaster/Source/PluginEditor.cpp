@@ -13,10 +13,23 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
         controls[i].setTextValueSuffix(i==2||i==3||i==5||i==6?" %":i==8?" dBFS":" dB");
         controls[i].setDoubleClickReturnValue(true,p.parameters.getParameter(ids[i])->convertFrom0to1(p.parameters.getParameter(ids[i])->getDefaultValue()));
     }
-    presets.addItemList({"Clean start","Gentle polish","Warm & smooth","Keep the punch","Soften the top"},1);
+    presets.setComponentID("masteringPresets");
+    presets.addSectionHeading("Original starting points");
+    for(int i=0;i<5;++i)presets.addItem(dream::presetName(i),i+1);
+    presets.addSeparator();presets.addSectionHeading("Suno starting points");
+    for(int i=5;i<dream::presetCount;++i)presets.addItem(dream::presetName(i),i+1);
+    presetHelp.setText("Suno presets are starting points. Choose by what you hear.",juce::dontSendNotification);
+    presetHelp.setJustificationType(juce::Justification::centred);
+    presetHelp.setColour(juce::Label::textColourId,night::white);
+    presetHelp.setColour(juce::Label::backgroundColourId,juce::Colour(0xe6101824));
+    presetHelp.setFont(juce::Font(juce::FontOptions(12.f)));
+    presetHelp.setMinimumHorizontalScale(.8f);
+    addAndMakeVisible(presetHelp);
     presets.setTextWhenNothingSelected("Choose a mastering starting point...");
     presets.setTooltip("Replaces processing settings. Adjust for each song.");
-    presets.onChange=[this]{if(presets.getSelectedId()>0){processor.applyPreset(presets.getSelectedId()-1);presets.setSelectedId(0,juce::dontSendNotification);}};
+    presets.onChange=[this]{if(presets.getSelectedId()>0){const int index=presets.getSelectedId()-1;processor.applyPreset(index);
+        presetHelp.setText(juce::String("Starting point: ")+dream::presetName(index)+"  /  "+dream::presetHint(index),juce::dontSendNotification);
+        presetHelp.setTooltip(presetHelp.getText());presets.setSelectedId(0,juce::dontSendNotification);}};
     addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(zoom);
     bypass.setTooltip("Latency-matched bypass. Loudness is not automatically matched.");
     lowCut.setTooltip("Optional 22 Hz high-pass filter for sub-rumble.");
@@ -29,7 +42,7 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
 }
 DreamMasterEditor::~DreamMasterEditor(){stopTimer();setLookAndFeel(nullptr);}
 void DreamMasterEditor::resized() {
-    presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);
+    presetHelp.setBounds(245,110,935,38);presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);
     night::place(controls[0],labels[0],25,493,100);night::place(controls[3],labels[3],129,493,100);
     night::place(controls[1],labels[1],242,476,96,98);night::place(controls[4],labels[4],342,476,96,98);night::place(controls[2],labels[2],291,593,96,78);
     night::place(controls[5],labels[5],457,493,115,133);night::place(controls[6],labels[6],598,493,115,133);
@@ -62,5 +75,5 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
     meter("OUTPUT RMS",processor.rmsDb.load(),562,false);meter("GLUE REDUCTION",processor.compDb.load(),603,true);meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
     night::text(g,"Levels: dBFS  /  Reduction: dB",974,681,193,18,10,night::muted);
     const bool off=processor.parameters.getRawParameterValue("bypass")->load()>.5f;
-    night::footer(g,look,off?"BYPASSED  /  Original signal with matched latency":processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":"Same sound. Different universe.   /   Start with Gentle polish and Loudness at 0 dB.","DreamMaster  " JucePlugin_VersionString);
+    night::footer(g,look,off?"BYPASSED  /  Original signal with matched latency":processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":"Suno: choose a starting point, adjust by ear, compare at a similar listening level.","DreamMaster  " JucePlugin_VersionString);
 }
