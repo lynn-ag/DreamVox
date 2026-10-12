@@ -33,6 +33,7 @@ target_compile_definitions(DreamVox PUBLIC
 target_link_libraries(DreamVox PRIVATE
   juce::juce_audio_utils
   juce::juce_audio_processors
+  juce::juce_dsp
   juce::juce_gui_extra
   PUBLIC juce::juce_recommended_config_flags
          juce::juce_recommended_lto_flags
