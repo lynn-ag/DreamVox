@@ -42,6 +42,7 @@ private:
     Biquad lowShelf, midBell, highShelf;
     juce::Reverb reverb;
     juce::AudioBuffer<float> delayBuffer;
+    juce::AudioBuffer<float> wetBuffer;
     int delayWrite = 0;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> delayWet, reverbWet, doubleWet;
     double sampleRate = 44100.0;
