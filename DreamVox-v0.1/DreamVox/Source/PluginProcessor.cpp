@@ -155,6 +155,8 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             deEssEnvelope=(std::abs(hp)>deEssEnvelope?deAtk:deRel)*deEssEnvelope+(1.0f-(std::abs(hp)>deEssEnvelope?deAtk:deRel))*std::abs(hp);
         }
         if (deEssEnvelope>0.12f) deGain=1.0f-deEss*juce::jlimit(0.0f,0.65f,(deEssEnvelope-0.12f)*2.5f);
+        const float echoMix = delayWet.getNextValue();
+        const float doublerMix = doubleWet.getNextValue();
         for (int ch=0;ch<channels;++ch)
         {
             float x=buffer.getSample(ch,n);
@@ -176,6 +178,21 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             x += echoSample * echoMix * 0.45f;
             buffer.setSample(ch,n,x);
         }
+        delayWrite = (delayWrite + 1) % delayBuffer.getNumSamples();
+    }
+    jassert (samples <= wetBuffer.getNumSamples());
+    if (samples > wetBuffer.getNumSamples()) return;
+    for (int ch = 0; ch < channels; ++ch)
+        wetBuffer.copyFrom (ch, 0, buffer, ch, 0, samples);
+    if (channels == 1)
+        reverb.processMono (wetBuffer.getWritePointer (0), samples);
+    else if (channels >= 2)
+        reverb.processStereo (wetBuffer.getWritePointer (0), wetBuffer.getWritePointer (1), samples);
+    for (int n = 0; n < samples; ++n)
+    {
+        const float mix = reverbWet.getNextValue() * 0.38f;
+        for (int ch = 0; ch < channels; ++ch)
+            buffer.setSample (ch, n, buffer.getSample (ch, n) * (1.0f - mix) + wetBuffer.getSample (ch, n) * mix);
     }
 }
 
