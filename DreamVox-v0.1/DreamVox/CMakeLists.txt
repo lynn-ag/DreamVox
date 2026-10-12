@@ -38,3 +38,14 @@ target_link_libraries(DreamVox PRIVATE
   PUBLIC juce::juce_recommended_config_flags
          juce::juce_recommended_lto_flags
          juce::juce_recommended_warning_flags)
+         
+# Bundle the DreamVox neon interface artwork
+juce_add_binary_data(DreamVoxArtwork
+  SOURCES
+    "DreamVox Neon Vocal Suite.png"
+)
+
+target_link_libraries(DreamVox PRIVATE
+  DreamVoxArtwork
+)
+
