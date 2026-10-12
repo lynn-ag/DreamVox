@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DreamVox VERSION 0.1.0 LANGUAGES C CXX)
+project(DreamVox VERSION 0.5.0 LANGUAGES C CXX)
 
 if(DEFINED JUCE_DIR AND EXISTS "${JUCE_DIR}/CMakeLists.txt")
   add_subdirectory("${JUCE_DIR}" JUCE)
@@ -14,11 +14,11 @@ endif()
 
 juce_add_plugin(DreamVox
   COMPANY_NAME "DreamVox Audio"
-  BUNDLE_ID "audio.dreamvox.vocalrack"
+  BUNDLE_ID "audio.dreamvox.vocalrack5"
   PLUGIN_MANUFACTURER_CODE DmVx
-  PLUGIN_CODE DrVx
-  PRODUCT_NAME "DreamVox"
-  DESCRIPTION "Dreamy vocal mixing rack"
+  PLUGIN_CODE DvF5
+  PRODUCT_NAME "DreamVox 5"
+  DESCRIPTION "DreamVox 5 neon vocal mixing rack"
   FORMATS VST3
   VST3_CATEGORIES Fx)
 
