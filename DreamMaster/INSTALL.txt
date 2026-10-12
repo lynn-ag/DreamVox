@@ -1,0 +1,22 @@
+DREAMMASTER 0.1.0 - WINDOWS x64 VST3
+
+1. Close FL Studio and extract the ZIP.
+2. Copy the entire DreamMaster.vst3 folder into:
+   C:\Program Files\Common Files\VST3\
+   Keep Contents and all files inside together.
+3. Open FL Studio > Options > Manage plugins.
+4. Enable Verify plugins and Rescan plugins with errors, then Find installed plugins.
+   If replacing a future version, enable Rescan previously verified plugins too.
+5. Add DreamMaster to a master mixer effect slot, near the end of the chain.
+
+FIRST USE
+Choose Gentle polish. Leave Loudness at 0 dB and Ceiling at -1 dBFS to start.
+Adjust by ear, comparing at similar volume. Turn Loudness down if LIMIT reduction
+stays above about 2-3 dB. Some mixes need no added compression or loudness.
+This version limits sample peaks, not true peaks. Check true peaks after export;
+lower Ceiling if needed. There is no automatic LUFS target or loudness matching.
+Use the final WAV/full mix where possible. Re-encoding MP3 does not restore detail.
+
+DreamMaster is separate from DreamVox. Installing it does not replace DreamVox.
+See README.md for controls and limitations, validation/ for automated test logs,
+and BUILD.txt for the source commit used for this download.

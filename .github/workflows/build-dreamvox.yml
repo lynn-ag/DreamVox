@@ -20,6 +20,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Prepare artwork
+        run: python Artwork/prepare-artwork.py
+
       - name: Configure DreamVox
         run: >-
           cmake -S DreamVox-v0.1/DreamVox -B build
