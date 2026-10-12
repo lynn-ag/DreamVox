@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 
 class DreamVoxAudioProcessor final : public juce::AudioProcessor
 {
@@ -16,7 +17,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return 4.0; }
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
     void setCurrentProgram (int) override {}
@@ -39,6 +40,10 @@ private:
         void reset() noexcept;
     };
     Biquad lowShelf, midBell, highShelf;
+    juce::Reverb reverb;
+    juce::AudioBuffer<float> delayBuffer;
+    int delayWrite = 0;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> delayWet, reverbWet, doubleWet;
     double sampleRate = 44100.0;
     float compEnvelope = 0.0f;
     float deEssEnvelope = 0.0f;
