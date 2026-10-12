@@ -32,6 +32,182 @@ float levelToNorm (float level)
 }
 }
 
+
+namespace
+{
+constexpr const char* subtitles[] = {
+    "CLARITY", "DYNAMICS", "SHAPE", "SMOOTH",
+    "CHARACTER", "AMBIENCE", "DELAY", "WIDTH"
+};
+
+void drawCardSymbol (juce::Graphics& g, int index, float cx, float cy)
+{
+    const auto hotPink = juce::Colour (0xffff8bdc);
+    const auto iceBlue = juce::Colour (0xff96b7ff);
+    const auto lavender = juce::Colour (0xffc58dff);
+    g.setColour (index == 0 ? iceBlue : index == 5 ? lavender : hotPink);
+    switch (index)
+    {
+        case 0: // Faceted diamond
+        {
+            juce::Path diamond;
+            diamond.startNewSubPath (cx, cy - 29.0f);
+            diamond.lineTo (cx + 24.0f, cy - 4.0f);
+            diamond.lineTo (cx, cy + 28.0f);
+            diamond.lineTo (cx - 24.0f, cy - 4.0f);
+            diamond.closeSubPath();
+            g.fillPath (diamond);
+            g.setColour (juce::Colour (0xff403e83));
+            g.drawLine (cx, cy - 27, cx, cy + 27, 1.6f);
+            g.drawLine (cx - 22, cy - 4, cx + 22, cy - 4, 1.6f);
+            break;
+        }
+        case 1: // Pearl compressor orb
+        {
+            g.setGradientFill (juce::ColourGradient (juce::Colour (0xffffd0ed), cx - 17, cy - 21,
+                                                    juce::Colour (0xffbe498f), cx + 22, cy + 25, false));
+            g.fillEllipse (cx - 27, cy - 27, 54.0f, 54.0f);
+            g.setColour (juce::Colour (0xaaeea4ff));
+            g.drawEllipse (cx - 29, cy - 29, 58, 58, 2.0f);
+            g.setColour (juce::Colour (0xb9ffffff));
+            g.fillEllipse (cx - 15, cy - 19, 14, 8);
+            break;
+        }
+        case 2: // Butterfly equaliser
+        {
+            g.setColour (hotPink);
+            juce::Path wing;
+            wing.addEllipse (cx - 28, cy - 19, 27, 27);
+            g.fillPath (wing, juce::AffineTransform::rotation (-0.38f, cx - 15.0f, cy - 5.5f));
+            juce::Path other;
+            other.addEllipse (cx + 1, cy - 19, 27, 27);
+            g.fillPath (other, juce::AffineTransform::rotation (0.38f, cx + 14.5f, cy - 5.5f));
+            g.setColour (lavender);
+            g.fillEllipse (cx - 22, cy + 1, 21, 24);
+            g.fillEllipse (cx + 1, cy + 1, 21, 24);
+            g.setColour (juce::Colour (0xfffbe4ff));
+            g.drawLine (cx, cy - 14, cx, cy + 19, 2.5f);
+            break;
+        }
+        case 3: // Vocal de-esser waveform
+        {
+            for (int i = 0; i < 13; ++i)
+            {
+                const float heights[] = {8, 20, 12, 34, 48, 25, 60, 36, 51, 28, 16, 25, 9};
+                const float h = heights[i];
+                g.drawLine (cx - 30.0f + i * 5.0f, cy - h * 0.5f,
+                            cx - 30.0f + i * 5.0f, cy + h * 0.5f, 2.6f);
+            }
+            break;
+        }
+        case 4: // Heart tone character
+        {
+            juce::Path heart;
+            heart.startNewSubPath (cx, cy + 26);
+            heart.cubicTo (cx - 36, cy + 5, cx - 33, cy - 25, cx - 14, cy - 25);
+            heart.cubicTo (cx - 4, cy - 25, cx, cy - 16, cx, cy - 12);
+            heart.cubicTo (cx + 5, cy - 22, cx + 13, cy - 28, cx + 22, cy - 23);
+            heart.cubicTo (cx + 42, cy - 11, cx + 25, cy + 11, cx, cy + 26);
+            heart.closeSubPath();
+            g.fillPath (heart);
+            g.setColour (juce::Colour (0x8cffffff));
+            g.drawLine (cx - 15, cy - 7, cx + 7, cy + 12, 1.7f);
+            break;
+        }
+        case 5: // Moonlit space cloud
+            g.setColour (juce::Colour (0xffa8a2fc));
+            g.fillEllipse (cx - 29, cy - 5, 35, 32);
+            g.fillEllipse (cx - 12, cy - 21, 34, 40);
+            g.fillEllipse (cx + 9, cy - 8, 27, 32);
+            g.fillRoundedRectangle (cx - 27, cy + 4, 60, 20, 10);
+            break;
+        case 6: // Saturn for the echo engine
+        {
+            g.setColour (juce::Colour (0xffef72d8));
+            g.fillEllipse (cx - 23, cy - 23, 46, 46);
+            juce::Path ring;
+            ring.addEllipse (cx - 37, cy - 10, 74, 20);
+            g.setColour (juce::Colour (0xffebb5ff));
+            g.strokePath (ring, juce::PathStrokeType (3.0f),
+                          juce::AffineTransform::rotation (-0.35f, cx, cy));
+            break;
+        }
+        default: // two gently offset voices
+            g.drawEllipse (cx - 33, cy - 22, 49, 44, 3.0f);
+            g.drawEllipse (cx - 9, cy - 22, 49, 44, 3.0f);
+            break;
+    }
+}
+}
+
+void DreamVoxEffectCard::paintButton (juce::Graphics& g, bool highlighted, bool down)
+{
+    const auto r = getLocalBounds().toFloat().reduced (1.8f);
+    const auto edge = selected ? juce::Colour (0xffff9cde) : juce::Colour (0xff7c477a);
+    const auto c1 = selected ? juce::Colour (0xff31132e) : juce::Colour (0xff1a1026);
+    const auto c2 = down ? juce::Colour (0xff5d214d) : juce::Colour (0xff0c0718);
+    g.setGradientFill (juce::ColourGradient (c1, 0, 0, c2, 0, r.getBottom(), false));
+    g.fillRoundedRectangle (r, 14.0f);
+    if (selected || highlighted)
+    {
+        g.setColour (juce::Colour (0x45ff8bcb));
+        g.drawRoundedRectangle (r.reduced (3), 12.0f, 4.0f);
+    }
+    g.setColour (edge);
+    g.drawRoundedRectangle (r, 14.0f, selected ? 2.5f : 1.1f);
+
+    // Real button selection, with the jewel art rendered live in JUCE.
+    const float cx = r.getCentreX(), cy = r.getY() + 48.0f;
+    g.setColour (juce::Colour (0x32ff8bdc));
+    g.fillEllipse (cx - 35.0f, cy - 35.0f, 70.0f, 70.0f);
+    drawCardSymbol (g, moduleIndex, cx, cy);
+    g.setColour (juce::Colour (0xfffff3ff));
+    g.setFont (juce::Font (14.0f, juce::Font::bold));
+    g.drawText (getButtonText(), 3, static_cast<int> (r.getY() + 89), getWidth() - 6, 19,
+                juce::Justification::centred);
+    g.setColour (juce::Colour (0xffcba1ce));
+    g.setFont (juce::Font (10.0f));
+    g.drawText (subtitles[moduleIndex], 3, static_cast<int> (r.getY() + 109),
+                getWidth() - 6, 14, juce::Justification::centred);
+    if (selected)
+    {
+        g.setColour (juce::Colour (0xffff80ce));
+        g.fillRoundedRectangle (getWidth() * 0.33f, r.getBottom() - 4.0f,
+                                getWidth() * 0.34f, 2.0f, 1.0f);
+    }
+}
+
+void DreamVoxKnobLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y,
+                                                int width, int height, float position,
+                                                float start, float end, juce::Slider&)
+{
+    const auto centre = juce::Point<float> (x + width * 0.5f, y + height * 0.47f);
+    const float radius = juce::jmin (width * 0.38f, height * 0.40f);
+    g.setColour (juce::Colour (0x404e2c67));
+    g.fillEllipse (centre.x - radius - 8, centre.y - radius - 8,
+                   (radius + 8) * 2, (radius + 8) * 2);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff30263d),
+                                           centre.x - radius, centre.y - radius,
+                                           juce::Colour (0xff080812),
+                                           centre.x + radius, centre.y + radius, false));
+    g.fillEllipse (centre.x - radius, centre.y - radius, radius * 2, radius * 2);
+    juce::Path background, foreground;
+    background.addCentredArc (centre.x, centre.y, radius + 4, radius + 4, 0,
+                              start, end, true);
+    const float angle = start + position * (end - start);
+    foreground.addCentredArc (centre.x, centre.y, radius + 4, radius + 4, 0,
+                              start, angle, true);
+    g.setColour (juce::Colour (0xff553950));
+    g.strokePath (background, juce::PathStrokeType (4.0f));
+    g.setColour (juce::Colour (0xffff85cb));
+    g.strokePath (foreground, juce::PathStrokeType (4.0f));
+    g.setColour (juce::Colour (0xfff4e7ff));
+    const auto thumbPoint = centre.getPointOnCircumference (radius * 0.75f, angle);
+    g.fillEllipse (thumbPoint.x - 3.5f, thumbPoint.y - 3.5f, 7.0f, 7.0f);
+    g.setColour (juce::Colour (0x55edc6fb));
+    g.drawEllipse (centre.x - radius, centre.y - radius, radius * 2, radius * 2, 0.8f);
+}
+
 DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
@@ -39,6 +215,9 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
     {
         auto* slider = controls.add (new juce::Slider());
         slider->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        slider->setLookAndFeel (&knobLook);
+        slider->setRotaryParameters (juce::MathConstants<float>::pi * 1.25f,
+                                      juce::MathConstants<float>::pi * 2.75f, true);
         slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 100, 22);
         slider->setColour (juce::Slider::rotarySliderFillColourId, pink);
         slider->setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff423253));
@@ -92,6 +271,7 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
     for (int i = 0; i < 8; ++i)
     {
         auto& button = moduleButtons[static_cast<size_t> (i)];
+        button.moduleIndex = i;
         button.setButtonText (DreamVoxPresets::effectBanks[static_cast<size_t> (i)].name);
         button.setColour (juce::TextButton::textColourOffId, pearl);
         button.setColour (juce::TextButton::buttonColourId, panel);
@@ -113,7 +293,7 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
 
     selectModule (0);
     // Keep resizing last: JUCE can call resized() during construction.
-    setSize (1120, 720);
+    setSize (1120, 740);
     startTimerHz (24);
 }
 
@@ -131,9 +311,10 @@ void DreamVoxAudioProcessorEditor::selectModule (int index)
     }
 
     for (int i = 0; i < 8; ++i)
-        moduleButtons[static_cast<size_t> (i)].setColour (
-            juce::TextButton::buttonColourId,
-            i == selectedModule ? juce::Colour (0xff793261) : panel);
+    {
+        moduleButtons[static_cast<size_t> (i)].selected = i == selectedModule;
+        moduleButtons[static_cast<size_t> (i)].repaint();
+    }
 
     effectPresetSelector.clear (juce::dontSendNotification);
     effectPresetSelector.addItem ("Choose an effect preset...", 1);
