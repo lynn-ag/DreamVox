@@ -60,4 +60,65 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Preset& pres
     if (auto* bypass = state.getParameter ("bypass"))
         bypass->setValueNotifyingHost (0.0f);
 }
+
+// Effect-specific presets. These affect ONLY the listed parameters.
+// Other modules, chain settings, and bypass are preserved.
+struct EffectPreset
+{
+    const char* name;
+    std::array<float, 4> values;
+};
+struct EffectBank
+{
+    const char* name;
+    const char* description;
+    std::array<const char*, 4> parameterIds;
+    int parameterCount;
+    std::array<EffectPreset, 4> presets;
+};
+inline constexpr std::array<EffectBank, 8> effectBanks {{
+    { "CLEAN", "Low-cut and gentle noise-floor control", {"highpass", "gateThreshold", nullptr, nullptr}, 2,
+      {{ {"Natural", {25.0f, -85.0f, 0, 0}}, {"Lead Cleanup", {85.0f, -80.0f, 0, 0}},
+         {"Room Noise Tamer", {60.0f, -55.0f, 0, 0}}, {"Backing Vocal Cut", {125.0f, -75.0f, 0, 0}} }} },
+    { "COMP", "Shape vocal dynamics without losing feeling", {"threshold", "ratio", "compAttack", "compRelease"}, 4,
+      {{ {"Transparent", {-14.0f, 1.8f, 25.0f, 180.0f}}, {"Velvet Levelling", {-22.0f, 2.8f, 15.0f, 140.0f}},
+         {"Tight Pop", {-25.0f, 4.0f, 7.0f, 90.0f}}, {"Slow Ballad", {-19.0f, 2.2f, 35.0f, 240.0f}} }} },
+    { "EQ", "Three-band musical vocal tone", {"low", "body", "air", nullptr}, 3,
+      {{ {"Flat", {0.0f, 0.0f, 0.0f, 0}}, {"Warm Body", {0.5f, 2.0f, -1.0f, 0}},
+         {"Airy R&B", {-1.0f, -0.5f, 2.5f, 0}}, {"Muddy Vocal Fix", {-3.0f, -2.0f, 1.0f, 0}} }} },
+    { "DE-ESS", "Tame high-frequency sibilance", {"deess", "deessFreq", nullptr, nullptr}, 2,
+      {{ {"Soft Control", {20.0f, 7000.0f, 0, 0}}, {"Natural", {35.0f, 6200.0f, 0, 0}},
+         {"Strong Sibilance", {65.0f, 5700.0f, 0, 0}}, {"Bright Voice", {52.0f, 8500.0f, 0, 0}} }} },
+    { "TONE", "Add character through soft saturation", {"warmth", nullptr, nullptr, nullptr}, 1,
+      {{ {"Clean", {0.0f, 0, 0, 0}}, {"Satin", {12.0f, 0, 0, 0}},
+         {"Tape-ish Warmth", {30.0f, 0, 0, 0}}, {"Vintage Edge", {55.0f, 0, 0, 0}} }} },
+    { "SPACE", "Choose vocal ambience and depth", {"space", "room", nullptr, nullptr}, 2,
+      {{ {"Dry", {0.0f, 45.0f, 0, 0}}, {"Intimate Room", {12.0f, 30.0f, 0, 0}},
+         {"Velvet Hall", {25.0f, 65.0f, 0, 0}}, {"Dreamy Wide", {40.0f, 85.0f, 0, 0}} }} },
+    { "ECHO", "Delays for depth and hypnotic repeats", {"echo", "echoTime", "feedback", nullptr}, 3,
+      {{ {"Off", {0.0f, 330.0f, 24.0f, 0}}, {"Short Slap", {17.0f, 110.0f, 12.0f, 0}},
+         {"Soft Eighth", {20.0f, 270.0f, 25.0f, 0}}, {"Dreamy Trail", {32.0f, 470.0f, 43.0f, 0}} }} },
+    { "DOUBLER", "Stereo vocal thickness and spread", {"doubler", "doublerSpread", nullptr, nullptr}, 2,
+      {{ {"Off", {0.0f, 18.0f, 0, 0}}, {"Subtle Width", {18.0f, 16.0f, 0, 0}},
+         {"Wide Backing", {45.0f, 24.0f, 0, 0}}, {"Lush Dream", {60.0f, 36.0f, 0, 0}} }} }
+}};
+
+inline void applyEffect (juce::AudioProcessorValueTreeState& state, int bank, int presetIndex)
+{
+    if (bank < 0 || bank >= static_cast<int> (effectBanks.size())
+        || presetIndex < 0 || presetIndex >= 4)
+        return;
+    const auto& group = effectBanks[static_cast<size_t> (bank)];
+    const auto& values = group.presets[static_cast<size_t> (presetIndex)].values;
+    for (int i = 0; i < group.parameterCount; ++i)
+    {
+        if (auto* param = state.getParameter (group.parameterIds[static_cast<size_t> (i)]))
+        {
+            param->beginChangeGesture();
+            param->setValueNotifyingHost (param->convertTo0to1 (values[static_cast<size_t> (i)]));
+            param->endChangeGesture();
+        }
+    }
+}
+
 } // namespace DreamVoxPresets
