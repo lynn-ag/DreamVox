@@ -104,7 +104,7 @@ public:
         }
         g.setColour (juce::Colour (0xfffff2ff));
         g.setFont (juce::Font (14.0f, juce::Font::bold));
-        g.drawText (label, r.withY (r.getBottom() - 27.0f).withHeight (22.0f),
+        g.drawText (label, r.withY (r.getBottom() - 27.0f).withHeight (22.0f).toNearestInt(),
                     juce::Justification::centred);
     }
 
@@ -314,8 +314,8 @@ void DreamVoxAudioProcessorEditor::timerCallback()
     shownDeessReduction = juce::jmax (
         processor.deesserReductionDb.load (std::memory_order_relaxed),
         shownDeessReduction * 0.88f);
-    repaint (19, 140, 1082, 187);
-    repaint (796, 480, 189, 200);
+    repaint (18, 202, 1084, 132);
+    repaint (816, 548, 161, 107);
 }
 
 void DreamVoxAudioProcessorEditor::drawPeakMeter (
@@ -347,27 +347,27 @@ void DreamVoxAudioProcessorEditor::drawPeakMeter (
 
 void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
 {
-    const auto monitor = juce::Rectangle<float> (19.0f, 138.0f, 1082.0f, 186.0f);
-    g.setColour (juce::Colour (0xf20b071b));
-    g.fillRoundedRectangle (monitor, 17.0f);
-    g.setColour (violet.withAlpha (0.7f));
-    g.drawRoundedRectangle (monitor, 17.0f, 1.0f);
+    // Actual audio readings only. Monitor remains visible on every module.
+    const auto monitor = juce::Rectangle<float> (18.0f, 202.0f, 1084.0f, 131.0f);
+    g.setColour (juce::Colour (0xff10091d));
+    g.fillRoundedRectangle (monitor, 13.0f);
+    g.setColour (juce::Colour (0xffb77db1).withAlpha (0.72f));
+    g.drawRoundedRectangle (monitor, 13.0f, 1.0f);
 
-    drawPeakMeter (g, {28.0f, 155.0f, 106.0f, 157.0f}, shownInput, "INPUT");
-    drawPeakMeter (g, {982.0f, 155.0f, 107.0f, 157.0f}, shownOutput, "OUTPUT");
+    drawPeakMeter (g, {27.0f, 212.0f, 95.0f, 110.0f}, shownInput, "INPUT");
+    drawPeakMeter (g, {995.0f, 212.0f, 96.0f, 110.0f}, shownOutput, "OUTPUT");
 
-    // The waveform is the actual post-processing audio held in an atomic ring.
-    const auto wave = juce::Rectangle<float> (145.0f, 175.0f, 390.0f, 126.0f);
-    const auto spec = juce::Rectangle<float> (550.0f, 175.0f, 412.0f, 126.0f);
-    g.setColour (muted);
-    g.setFont (juce::Font (12.0f, juce::Font::bold));
-    g.drawText ("LIVE OUTPUT WAVEFORM", 151, 151, 370, 20, juce::Justification::centred);
-    g.drawText ("LIVE OUTPUT SPECTRUM", 560, 151, 390, 20, juce::Justification::centred);
-    for (auto rect : {wave, spec})
+    const auto wave = juce::Rectangle<float> (144.0f, 238.0f, 405.0f, 82.0f);
+    const auto spec = juce::Rectangle<float> (568.0f, 238.0f, 409.0f, 82.0f);
+    g.setColour (pearl);
+    g.setFont (juce::Font (11.5f, juce::Font::bold));
+    g.drawText ("LIVE WAVEFORM", 160, 212, 360, 21, juce::Justification::centred);
+    g.drawText ("LIVE FREQUENCY SPECTRUM", 584, 212, 360, 21, juce::Justification::centred);
+    for (const auto rect : {wave, spec})
     {
-        g.setColour (juce::Colour (0xff15102a));
-        g.fillRoundedRectangle (rect, 7.0f);
-        g.setColour (juce::Colour (0xff312440));
+        g.setColour (juce::Colour (0xff1b102a));
+        g.fillRoundedRectangle (rect, 5.0f);
+        g.setColour (juce::Colour (0xff483158));
         for (int k = 1; k < 4; ++k)
             g.drawHorizontalLine (static_cast<int> (rect.getY() + rect.getHeight() * k / 4.0f),
                                   rect.getX(), rect.getRight());
@@ -384,12 +384,14 @@ void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
         const float v = juce::jlimit (-1.0f, 1.0f,
                        processor.waveform[pos].load (std::memory_order_relaxed));
         const float x = wave.getX() + static_cast<float> (i);
-        const float y = wave.getCentreY() - v * wave.getHeight() * 0.46f;
+        const float y = wave.getCentreY() - v * wave.getHeight() * 0.47f;
         if (i == 0) line.startNewSubPath (x, y);
         else line.lineTo (x, y);
     }
-    g.setColour (pink.withAlpha (0.95f));
-    g.strokePath (line, juce::PathStrokeType (1.5f));
+    g.setColour (pink.withAlpha (0.30f));
+    g.strokePath (line, juce::PathStrokeType (4.0f));
+    g.setColour (pink);
+    g.strokePath (line, juce::PathStrokeType (1.35f));
 
     constexpr int fftSize = 1024;
     for (int i = 0; i < fftSize; ++i)
@@ -406,7 +408,7 @@ void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
     fft.performFrequencyOnlyForwardTransform (fftScratch.data());
     const float sampleRate = static_cast<float> (juce::jmax (8000.0, processor.getSampleRate()));
     constexpr int bands = 58;
-    const float barGap = 1.0f, barWidth = spec.getWidth() / bands - barGap;
+    const float barGap = 1.1f, barWidth = spec.getWidth() / bands - barGap;
     for (int band = 0; band < bands; ++band)
     {
         const float lo = 25.0f * std::pow (900.0f, static_cast<float> (band) / bands);
@@ -419,7 +421,7 @@ void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
             magnitude = juce::jmax (magnitude, fftScratch[static_cast<size_t> (bin)]);
         const float db = juce::Decibels::gainToDecibels (magnitude * (2.0f / fftSize), -90.0f);
         const float h = spec.getHeight() * juce::jlimit (0.0f, 1.0f, (db + 78.0f) / 78.0f);
-        g.setColour (band % 3 == 0 ? aqua : pink);
+        g.setColour (band % 4 == 0 ? aqua : pink);
         g.fillRoundedRectangle (spec.getX() + band * (barWidth + barGap),
                                 spec.getBottom() - h, barWidth, h, 1.0f);
     }
@@ -427,92 +429,131 @@ void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
 
 void DreamVoxAudioProcessorEditor::paintSelectedModuleMonitor (juce::Graphics& g)
 {
-    const auto rect = juce::Rectangle<float> (797.0f, 507.0f, 182.0f, 151.0f);
-    g.setColour (juce::Colour (0xff130c24));
+    const auto rect = juce::Rectangle<float> (816.0f, 548.0f, 161.0f, 107.0f);
+    g.setColour (juce::Colour (0xff150d25));
     g.fillRoundedRectangle (rect, 11.0f);
-    g.setColour (violet.withAlpha (0.35f));
+    g.setColour (violet.withAlpha (0.65f));
     g.drawRoundedRectangle (rect, 11.0f, 1.0f);
     const bool compression = selectedModule == 1, deess = selectedModule == 3;
     const float reduction = compression ? shownCompReduction : shownDeessReduction;
-    const float shownPeak = juce::jmax (shownOutput[0], shownOutput[1]);
-    const float visual = compression || deess ? juce::jlimit (0.0f, 1.0f, reduction / 18.0f)
-                                               : levelToNorm (shownPeak);
+    const float peak = juce::jmax (shownOutput[0], shownOutput[1]);
+    const float norm = compression || deess ? juce::jlimit (0.0f, 1.0f, reduction / 18.0f)
+                                            : levelToNorm (peak);
     g.setColour (pearl);
-    g.setFont (juce::Font (12.0f, juce::Font::bold));
+    g.setFont (juce::Font (11.0f, juce::Font::bold));
     g.drawText (compression ? "GAIN REDUCTION" : deess ? "DE-ESS REDUCTION" : "LIVE OUTPUT",
-                rect.toNearestInt().removeFromTop (35), juce::Justification::centred);
+                rect.toNearestInt().removeFromTop (32), juce::Justification::centred);
     g.setColour (juce::Colour (0xff3a2645));
-    g.fillRoundedRectangle (810.0f, 574.0f, 153.0f, 15.0f, 6.0f);
+    g.fillRoundedRectangle (828.0f, 592.0f, 137.0f, 12.0f, 5.0f);
     g.setColour (pink);
-    g.fillRoundedRectangle (810.0f, 574.0f, 153.0f * visual, 15.0f, 6.0f);
+    g.fillRoundedRectangle (828.0f, 592.0f, 137.0f * norm, 12.0f, 5.0f);
     g.setColour (pearl);
-    g.setFont (juce::Font (23.0f, juce::Font::bold));
+    g.setFont (juce::Font (20.0f, juce::Font::bold));
     const float reading = compression || deess ? -reduction :
-          juce::Decibels::gainToDecibels (shownPeak, -90.0f);
-    g.drawText (juce::String (reading, 1) + " dB", 813, 606, 154, 34,
+         juce::Decibels::gainToDecibels (peak, -90.0f);
+    g.drawText (juce::String (reading, 1) + " dB", 828, 617, 138, 27,
                 juce::Justification::centred);
 }
 
 void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
 {
+    g.fillAll (ink);
+
+    // Only use the scenic middle of the PNG, never its obsolete fake control panels.
+    // This prevents duplicated knobs/meters behind the functional JUCE widgets.
     if (neonArtwork.isValid())
-        g.drawImage (neonArtwork, getLocalBounds().toFloat(),
-                     juce::RectanglePlacement::stretchToFit);
-    else
-        g.fillAll (ink);
+    {
+        const float imageW = static_cast<float> (neonArtwork.getWidth());
+        const float imageH = static_cast<float> (neonArtwork.getHeight());
+        g.drawImage (neonArtwork,
+                     juce::Rectangle<float> (0.0f, 0.0f, 1120.0f, 202.0f),
+                     juce::Rectangle<float> (imageW * 0.18f, imageH * 0.13f,
+                                             imageW * 0.76f, imageH * 0.22f));
+    }
+    juce::ColourGradient shade (juce::Colour (0xff12081e), 0.0f, 80.0f,
+                                 juce::Colour (0x1a10061c), 800.0f, 80.0f, false);
+    g.setGradientFill (shade);
+    g.fillRect (0, 0, 1120, 202);
+    g.setColour (juce::Colour (0xaaed86cd));
+    g.fillRect (0, 200, 1120, 2);
 
-    // Functional controls are built above the flattened concept art.
-    g.setColour (juce::Colour (0xf00c071b));
-    g.fillRoundedRectangle (17.0f, 12.0f, 1086.0f, 109.0f, 17.0f);
+    g.setColour (juce::Colour (0x55ff80db));
+    g.setFont (juce::Font ("Segoe Script", 43.0f, juce::Font::italic));
+    g.drawText ("DreamVox", 28, 24, 415, 80, juce::Justification::left);
     g.setColour (pearl);
-    g.setFont (juce::Font (30.0f, juce::Font::bold));
-    g.drawText ("DREAMVOX 5", 31, 26, 376, 39, juce::Justification::left);
+    g.drawText ("DreamVox", 26, 22, 415, 80, juce::Justification::left);
+    g.setFont (juce::Font (13.5f, juce::Font::bold));
     g.setColour (pink);
-    g.setFont (juce::Font (12.5f));
-    g.drawText ("VELVET NIGHTS  •  FUNCTIONAL VOCAL SUITE",
-                33, 73, 495, 23, juce::Justification::left);
-    g.setColour (muted);
-    g.setFont (juce::Font (11.0f));
-    g.drawText ("CHAIN PRESETS", 619, 37, 256, 18, juce::Justification::left);
+    g.drawText ("V O C A L   S U I T E   •   V E L V E T   N I G H T S",
+                43, 105, 590, 25, juce::Justification::left);
+    g.setFont (juce::Font (12.5f, juce::Font::italic));
+    g.setColour (juce::Colour (0xffffbce6));
+    g.drawText ("Same Voice. Different Universe.", 43, 135, 470, 27,
+                juce::Justification::left);
 
+    g.setColour (pearl);
+    g.setFont (juce::Font (12.0f, juce::Font::bold));
+    g.drawText ("CHAIN PRESETS", 752, 73, 340, 17, juce::Justification::left);
+    g.setColour (muted);
+    g.setFont (juce::Font (11.5f));
+    g.drawText ("24 complete vocal sounds", 752, 108, 315, 20,
+                juce::Justification::left);
+
+    // Uninterrupted, readable live monitoring, matching the concept's signal strip.
     paintMonitor (g);
 
-    g.setColour (juce::Colour (0xf00f081d));
-    g.fillRoundedRectangle (19.0f, 409.0f, 1082.0f, 277.0f, 16.0f);
-    g.setColour (violet.withAlpha (0.6f));
-    g.drawRoundedRectangle (19.0f, 409.0f, 1082.0f, 277.0f, 16.0f, 1.0f);
+    // Selectable neon effect cards above the detailed processing page.
+    g.setColour (juce::Colour (0xffef7dc5).withAlpha (0.68f));
+    g.drawHorizontalLine (346, 18.0f, 1102.0f);
+
+    const auto detail = juce::Rectangle<float> (19.0f, 461.0f, 1082.0f, 215.0f);
+    g.setColour (juce::Colour (0xff11091f));
+    g.fillRoundedRectangle (detail, 15.0f);
+    g.setColour (violet.withAlpha (0.63f));
+    g.drawRoundedRectangle (detail, 15.0f, 1.0f);
 
     const auto& bank = DreamVoxPresets::effectBanks[static_cast<size_t> (selectedModule)];
     g.setColour (pearl);
-    g.setFont (juce::Font (23.0f, juce::Font::bold));
-    g.drawText (bank.name, 38, 418, 222, 34, juce::Justification::left);
-    g.setColour (muted);
-    g.setFont (juce::Font (12.0f));
-    g.drawText (bank.description, 38, 457, 554, 19, juce::Justification::left);
-    g.drawText ("EFFECT PRESET  •  changes only this module", 560, 419, 400, 20,
-                juce::Justification::left);
-    paintSelectedModuleMonitor (g);
+    g.setFont (juce::Font (21.0f, juce::Font::bold));
+    g.drawText (bank.name, 39, 467, 195, 32, juce::Justification::left);
     g.setColour (muted);
     g.setFont (juce::Font (11.0f));
-    g.drawText ("LIVE AUDIO • PRESETS ARE EDITABLE • YOUR ORIGINAL DREAMVOX IS SAFE",
-                38, 686, 900, 24, juce::Justification::left);
+    g.drawText (bank.description, 39, 499, 540, 18, juce::Justification::left);
+    g.drawText ("MODULE PRESET", 616, 466, 260, 20, juce::Justification::left);
+
+    paintSelectedModuleMonitor (g);
+
+    // Minimal bottom bar; no decorative, non-working sliders.
+    g.setColour (juce::Colour (0xff1b0e2a));
+    g.fillRoundedRectangle (18.0f, 682.0f, 1084.0f, 30.0f, 11.0f);
+    g.setColour (pink);
+    g.setFont (juce::Font (12.0f, juce::Font::bold));
+    g.drawText ("✦  DreamVox 5", 34, 685, 224, 23, juce::Justification::left);
+    g.setColour (muted);
+    g.setFont (juce::Font (11.0f));
+    g.drawText ("LIVE ANALYSIS    •    CLICK AN EFFECT TO EXPAND    •    32 MODULE PRESETS",
+                270, 687, 760, 21, juce::Justification::centred);
 }
 
 void DreamVoxAudioProcessorEditor::resized()
 {
     if (controls.size() != 20) return;
-    presetSelector.setBounds (610, 67, 280, 30);
-    bypass.setBounds (970, 66, 118, 31);
+    presetSelector.setBounds (747, 91, 244, 31);
+    bypass.setBounds (994, 91, 115, 31);
+
+    // Eight independent, clickable glossy cards like the source artwork.
     for (int i = 0; i < 8; ++i)
-        moduleButtons[static_cast<size_t> (i)].setBounds (20 + i * 136, 336, 128, 63);
-    effectPresetSelector.setBounds (568, 446, 352, 31);
+        moduleButtons[static_cast<size_t> (i)].setBounds (19 + i * 136, 349, 132, 103);
+
+    effectPresetSelector.setBounds (720, 492, 315, 28);
+    // Only the active effect's controls are shown, avoiding overlaid old UI.
     for (int j = 0; j < moduleCounts[selectedModule]; ++j)
     {
         const int id = moduleKnobs[selectedModule][j];
-        const int x = 53 + j * 176;
-        sectionLabels[id]->setBounds (x - 3, 496, 114, 18);
-        controls[id]->setBounds (x, 518, 112, 123);
+        const int x = 53 + j * 173;
+        sectionLabels[id]->setBounds (x - 5, 527, 112, 19);
+        controls[id]->setBounds (x - 3, 550, 108, 110);
     }
-    sectionLabels[7]->setBounds (990, 492, 102, 18);
-    controls[7]->setBounds (990, 515, 101, 126);
+    sectionLabels[7]->setBounds (989, 527, 104, 18);
+    controls[7]->setBounds (986, 547, 107, 115);
 }
