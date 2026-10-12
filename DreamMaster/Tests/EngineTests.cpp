@@ -1,4 +1,4 @@
-#include "../Source/MasterEngine.h"
+#include "../Source/Presets.h"
 #include <iostream>
 #include <random>
 #include <limits>
@@ -57,6 +57,25 @@ int main()
         for(int ch=0;ch<nc;++ch)for(auto v:quiet[ch])require(v==0,"Reset silence is not silent");
         std::cout<<"PASS "<<sr<<" Hz, "<<nc<<" channels: unity, latency, bypass, ceiling, stereo link, block sizes, automation, reset\n";
     }
+    // Exercise every preset on over-level, transient-rich stereo/mono material.
+    for(const auto sr:{44100,48000,96000,192000})for(int nc:{1,2})for(int index=0;index<dream::presetCount;++index)
+    {
+        dream::MasterEngine engine;engine.prepare(sr);const auto settings=dream::preset(index);
+        Audio source;for(auto& c:source)c.resize(static_cast<size_t>(sr/2));
+        for(size_t i=0;i<source[0].size();++i) {
+            source[0][i]=static_cast<float>(1.2*std::sin(i*2*3.141592653589793*70/sr)+.6*std::sin(i*2*3.141592653589793*3800/sr));
+            source[1][i]=static_cast<float>(.9*std::sin(i*2*3.141592653589793*130/sr));
+            if(i%997==0)source[0][i]=2.f;
+        }
+        const auto output=run(engine,source,nc,137,settings);
+        double energy=0;
+        for(int ch=0;ch<nc;++ch)for(auto v:output[ch]){
+            require(std::isfinite(v)&&std::abs(v)<=dream::gain(settings.ceiling)+1.e-6,"Preset exceeded sample ceiling");
+            energy+=v*v;
+        }
+        require(energy>0.01,"Preset unexpectedly muted audio");
+    }
+    std::cout<<"PASS all 13 presets: finite output, sample ceiling, non-silent output at 4 sample rates in mono/stereo\n";
     std::cout<<"ALL DSP TESTS PASSED\n";return 0;
  } catch(const std::exception& ex) { std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1; }
 }
