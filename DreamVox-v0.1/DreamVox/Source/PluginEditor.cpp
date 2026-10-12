@@ -343,8 +343,8 @@ void DreamVoxAudioProcessorEditor::timerCallback()
     shownDeessReduction = juce::jmax (
         processor.deesserReductionDb.load (std::memory_order_relaxed),
         shownDeessReduction * 0.88f);
-    repaint (19, 140, 1082, 187);
-    repaint (796, 480, 189, 200);
+    repaint (20, 169, 1080, 126);
+    repaint (768, 536, 185, 143);
 }
 
 void DreamVoxAudioProcessorEditor::drawPeakMeter (
@@ -376,172 +376,229 @@ void DreamVoxAudioProcessorEditor::drawPeakMeter (
 
 void DreamVoxAudioProcessorEditor::paintMonitor (juce::Graphics& g)
 {
-    const auto monitor = juce::Rectangle<float> (19.0f, 138.0f, 1082.0f, 186.0f);
-    g.setColour (juce::Colour (0xf20b071b));
-    g.fillRoundedRectangle (monitor, 17.0f);
-    g.setColour (violet.withAlpha (0.7f));
-    g.drawRoundedRectangle (monitor, 17.0f, 1.0f);
+    // All readings come from the processor, updated at 24 Hz on the UI thread.
+    const auto monitor = juce::Rectangle<float> (20.0f, 169.0f, 1080.0f, 126.0f);
+    g.setColour (juce::Colour (0xf70d061e));
+    g.fillRoundedRectangle (monitor, 16.0f);
+    g.setColour (juce::Colour (0xffa85693));
+    g.drawRoundedRectangle (monitor, 16.0f, 1.2f);
 
-    drawPeakMeter (g, {28.0f, 155.0f, 106.0f, 157.0f}, shownInput, "INPUT");
-    drawPeakMeter (g, {982.0f, 155.0f, 107.0f, 157.0f}, shownOutput, "OUTPUT");
+    drawPeakMeter (g, {28.0f, 173.0f, 111.0f, 119.0f}, shownInput, "INPUT");
+    drawPeakMeter (g, {979.0f, 173.0f, 111.0f, 119.0f}, shownOutput, "OUTPUT");
 
-    // The waveform is the actual post-processing audio held in an atomic ring.
-    const auto wave = juce::Rectangle<float> (145.0f, 175.0f, 390.0f, 126.0f);
-    const auto spec = juce::Rectangle<float> (550.0f, 175.0f, 412.0f, 126.0f);
-    g.setColour (muted);
-    g.setFont (juce::Font (12.0f, juce::Font::bold));
-    g.drawText ("LIVE OUTPUT WAVEFORM", 151, 151, 370, 20, juce::Justification::centred);
-    g.drawText ("LIVE OUTPUT SPECTRUM", 560, 151, 390, 20, juce::Justification::centred);
-    for (auto rect : {wave, spec})
+    const auto wave = juce::Rectangle<float> (150.0f, 200.0f, 380.0f, 79.0f);
+    const auto spec = juce::Rectangle<float> (543.0f, 200.0f, 420.0f, 79.0f);
+    g.setColour (juce::Colour (0xffecd2f7));
+    g.setFont (juce::Font (11.0f, juce::Font::bold));
+    g.drawText ("LIVE WAVEFORM", 158, 177, 361, 20, juce::Justification::centred);
+    g.drawText ("LIVE SPECTRUM", 553, 177, 405, 20, juce::Justification::centred);
+    for (const auto rect : { wave, spec })
     {
-        g.setColour (juce::Colour (0xff15102a));
+        g.setColour (juce::Colour (0xff100a23));
         g.fillRoundedRectangle (rect, 7.0f);
-        g.setColour (juce::Colour (0xff312440));
-        for (int k = 1; k < 4; ++k)
+        g.setColour (juce::Colour (0xff352447));
+        for (int k = 1; k <= 3; ++k)
             g.drawHorizontalLine (static_cast<int> (rect.getY() + rect.getHeight() * k / 4.0f),
                                   rect.getX(), rect.getRight());
     }
 
     const unsigned int write = processor.waveformWrite.load (std::memory_order_acquire);
-    juce::Path line;
-    const int waveformPoints = static_cast<int> (wave.getWidth());
-    for (int i = 0; i < waveformPoints; ++i)
+    juce::Path waveShape;
+    const int count = static_cast<int> (wave.getWidth());
+    for (int i = 0; i < count; ++i)
     {
-        const unsigned int age = static_cast<unsigned int> ((waveformPoints - 1 - i) * 2);
-        const unsigned int pos = (write + DreamVoxAudioProcessor::monitorSize - 1 - age)
-                                  % DreamVoxAudioProcessor::monitorSize;
-        const float v = juce::jlimit (-1.0f, 1.0f,
-                       processor.waveform[pos].load (std::memory_order_relaxed));
-        const float x = wave.getX() + static_cast<float> (i);
-        const float y = wave.getCentreY() - v * wave.getHeight() * 0.46f;
-        if (i == 0) line.startNewSubPath (x, y);
-        else line.lineTo (x, y);
+        const unsigned int age = static_cast<unsigned int> ((count - 1 - i) * 2);
+        const unsigned int index = (write + DreamVoxAudioProcessor::monitorSize - 1 - age)
+                                 % DreamVoxAudioProcessor::monitorSize;
+        const float sample = juce::jlimit (-1.0f, 1.0f,
+            processor.waveform[index].load (std::memory_order_relaxed));
+        const float px = wave.getX() + static_cast<float> (i);
+        const float py = wave.getCentreY() - sample * wave.getHeight() * 0.45f;
+        if (i == 0) waveShape.startNewSubPath (px, py);
+        else waveShape.lineTo (px, py);
     }
-    g.setColour (pink.withAlpha (0.95f));
-    g.strokePath (line, juce::PathStrokeType (1.5f));
+    g.setColour (juce::Colour (0xffff83d9));
+    g.strokePath (waveShape, juce::PathStrokeType (1.5f));
 
     constexpr int fftSize = 1024;
     for (int i = 0; i < fftSize; ++i)
     {
-        const auto pos = (write + DreamVoxAudioProcessor::monitorSize - fftSize + i)
-                       % DreamVoxAudioProcessor::monitorSize;
+        const auto index = (write + DreamVoxAudioProcessor::monitorSize - fftSize + i)
+                         % DreamVoxAudioProcessor::monitorSize;
         const float window = 0.5f - 0.5f * std::cos (
             juce::MathConstants<float>::twoPi * i / (fftSize - 1));
         fftScratch[static_cast<size_t> (i)] =
-            processor.waveform[pos].load (std::memory_order_relaxed) * window;
+            processor.waveform[index].load (std::memory_order_relaxed) * window;
     }
     for (int i = fftSize; i < 2 * fftSize; ++i)
         fftScratch[static_cast<size_t> (i)] = 0.0f;
     fft.performFrequencyOnlyForwardTransform (fftScratch.data());
-    const float sampleRate = static_cast<float> (juce::jmax (8000.0, processor.getSampleRate()));
+
+    const float sr = static_cast<float> (juce::jmax (8000.0, processor.getSampleRate()));
     constexpr int bands = 58;
-    const float barGap = 1.0f, barWidth = spec.getWidth() / bands - barGap;
+    const float barGap = 1.0f;
+    const float barWidth = spec.getWidth() / bands - barGap;
     for (int band = 0; band < bands; ++band)
     {
         const float lo = 25.0f * std::pow (900.0f, static_cast<float> (band) / bands);
         const float hi = 25.0f * std::pow (900.0f, static_cast<float> (band + 1) / bands);
-        const int minBin = juce::jlimit (1, fftSize / 2 - 1, static_cast<int> (lo * fftSize / sampleRate));
+        const int minBin = juce::jlimit (1, fftSize / 2 - 1,
+                                       static_cast<int> (lo * fftSize / sr));
         const int maxBin = juce::jlimit (minBin, fftSize / 2 - 1,
-                                        static_cast<int> (hi * fftSize / sampleRate) + 1);
+                                       static_cast<int> (hi * fftSize / sr) + 1);
         float magnitude = 0.0f;
         for (int bin = minBin; bin <= maxBin; ++bin)
             magnitude = juce::jmax (magnitude, fftScratch[static_cast<size_t> (bin)]);
-        const float db = juce::Decibels::gainToDecibels (magnitude * (2.0f / fftSize), -90.0f);
-        const float h = spec.getHeight() * juce::jlimit (0.0f, 1.0f, (db + 78.0f) / 78.0f);
-        g.setColour (band % 3 == 0 ? aqua : pink);
-        g.fillRoundedRectangle (spec.getX() + band * (barWidth + barGap),
-                                spec.getBottom() - h, barWidth, h, 1.0f);
+        const float db = juce::Decibels::gainToDecibels (
+            magnitude * (2.0f / fftSize), -90.0f);
+        const float height = spec.getHeight() *
+            juce::jlimit (0.0f, 1.0f, (db + 78.0f) / 78.0f);
+        if (height > 0.0f)
+        {
+            g.setColour (band % 4 == 0 ? juce::Colour (0xffaa97ff) : pink);
+            g.fillRoundedRectangle (spec.getX() + band * (barWidth + barGap),
+                                    spec.getBottom() - height, barWidth,
+                                    height, 1.0f);
+        }
     }
 }
 
 void DreamVoxAudioProcessorEditor::paintSelectedModuleMonitor (juce::Graphics& g)
 {
-    const auto rect = juce::Rectangle<float> (797.0f, 507.0f, 182.0f, 151.0f);
-    g.setColour (juce::Colour (0xff130c24));
-    g.fillRoundedRectangle (rect, 11.0f);
-    g.setColour (violet.withAlpha (0.35f));
-    g.drawRoundedRectangle (rect, 11.0f, 1.0f);
-    const bool compression = selectedModule == 1, deess = selectedModule == 3;
-    const float reduction = compression ? shownCompReduction : shownDeessReduction;
-    const float shownPeak = juce::jmax (shownOutput[0], shownOutput[1]);
-    const float visual = compression || deess ? juce::jlimit (0.0f, 1.0f, reduction / 18.0f)
-                                               : levelToNorm (shownPeak);
+    const auto box = juce::Rectangle<float> (768.0f, 536.0f, 185.0f, 143.0f);
+    g.setColour (juce::Colour (0xff100a20));
+    g.fillRoundedRectangle (box, 12.0f);
+    g.setColour (violet.withAlpha (0.54f));
+    g.drawRoundedRectangle (box, 12.0f, 1.1f);
+
+    const bool comp = selectedModule == 1;
+    const bool deess = selectedModule == 3;
+    const float gainReduction = comp ? shownCompReduction : shownDeessReduction;
+    const float peak = juce::jmax (shownOutput[0], shownOutput[1]);
+    const float amount = comp || deess
+        ? juce::jlimit (0.0f, 1.0f, gainReduction / 18.0f)
+        : levelToNorm (peak);
+    const float value = comp || deess ? -gainReduction :
+         juce::Decibels::gainToDecibels (peak, -90.0f);
+
     g.setColour (pearl);
-    g.setFont (juce::Font (12.0f, juce::Font::bold));
-    g.drawText (compression ? "GAIN REDUCTION" : deess ? "DE-ESS REDUCTION" : "LIVE OUTPUT",
-                rect.toNearestInt().removeFromTop (35), juce::Justification::centred);
-    g.setColour (juce::Colour (0xff3a2645));
-    g.fillRoundedRectangle (810.0f, 574.0f, 153.0f, 15.0f, 6.0f);
-    g.setColour (pink);
-    g.fillRoundedRectangle (810.0f, 574.0f, 153.0f * visual, 15.0f, 6.0f);
+    g.setFont (juce::Font (11.0f, juce::Font::bold));
+    g.drawText (comp ? "COMPRESSION" : deess ? "SIBILANCE CONTROL" : "LIVE OUTPUT",
+                778, 548, 165, 22, juce::Justification::centred);
+    g.setColour (juce::Colour (0xff362440));
+    g.fillRoundedRectangle (785.0f, 597.0f, 151.0f, 13.0f, 6.0f);
+    g.setGradientFill (juce::ColourGradient (pink, 785, 0, aqua, 935, 0, false));
+    g.fillRoundedRectangle (785.0f, 597.0f, 151.0f * amount, 13.0f, 6.0f);
     g.setColour (pearl);
-    g.setFont (juce::Font (23.0f, juce::Font::bold));
-    const float reading = compression || deess ? -reduction :
-          juce::Decibels::gainToDecibels (shownPeak, -90.0f);
-    g.drawText (juce::String (reading, 1) + " dB", 813, 606, 154, 34,
+    g.setFont (juce::Font (25.0f, juce::Font::bold));
+    g.drawText (juce::String (value, 1) + " dB", 781, 624, 162, 32,
                 juce::Justification::centred);
+    g.setColour (muted);
+    g.setFont (juce::Font (10.0f));
+    g.drawText (comp || deess ? "GAIN REDUCTION" : "AFTER PROCESSING",
+                780, 659, 162, 15, juce::Justification::centred);
 }
 
 void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    if (neonArtwork.isValid())
-        g.drawImage (neonArtwork, getLocalBounds().toFloat(),
-                     juce::RectanglePlacement::stretchToFit);
-    else
-        g.fillAll (ink);
+    g.fillAll (ink);
 
-    // Functional controls are built above the flattened concept art.
-    g.setColour (juce::Colour (0xf00c071b));
-    g.fillRoundedRectangle (17.0f, 12.0f, 1086.0f, 109.0f, 17.0f);
+    // This is the crucial difference from the earlier version:
+    // crop only the skyline atmosphere. NEVER stretch the PNG's fake controls
+    // underneath the functioning JUCE interface.
+    if (neonArtwork.isValid())
+    {
+        const int startY = juce::roundToInt (neonArtwork.getHeight() * 0.13f);
+        const int cropH = juce::roundToInt (neonArtwork.getHeight() * 0.23f);
+        g.drawImage (neonArtwork, 0, 0, getWidth(), 164,
+                     0, startY, neonArtwork.getWidth(), cropH);
+    }
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xcf0b041a), 0, 0,
+                                            juce::Colour (0x600b041a), 1120, 0, false));
+    g.fillRect (0, 0, getWidth(), 164);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0x09120523), 0, 0,
+                                            juce::Colour (0xd80d061d), 0, 164, false));
+    g.fillRect (0, 0, getWidth(), 164);
+    g.setColour (juce::Colour (0xffb069ad));
+    g.drawLine (0, 164, 1120, 164, 1.5f);
+
+    // Handwritten-style logo echoes the original Velvet Nights artwork.
+    g.setColour (juce::Colour (0xffffb5e5));
+    g.setFont (juce::Font ("Segoe Script", 38.0f, juce::Font::italic));
+    g.drawText ("DreamVox", 32, 15, 510, 70, juce::Justification::left);
     g.setColour (pearl);
-    g.setFont (juce::Font (30.0f, juce::Font::bold));
-    g.drawText ("DREAMVOX 5", 31, 26, 376, 39, juce::Justification::left);
-    g.setColour (pink);
-    g.setFont (juce::Font (12.5f));
-    g.drawText ("VELVET NIGHTS  •  FUNCTIONAL VOCAL SUITE",
-                33, 73, 495, 23, juce::Justification::left);
+    g.setFont (juce::Font (12.0f, juce::Font::bold));
+    g.drawText ("V O C A L   S U I T E", 64, 91, 340, 22, juce::Justification::left);
+    g.setColour (juce::Colour (0xfff19aca));
+    g.setFont (juce::Font (13.0f, juce::Font::italic));
+    g.drawText ("Same voice. Different universe.", 34, 128, 450, 25,
+                juce::Justification::left);
+    g.setColour (pearl);
+    g.setFont (juce::Font (13.0f, juce::Font::bold));
+    g.drawText ("VELVET NIGHTS", 639, 20, 300, 26, juce::Justification::left);
     g.setColour (muted);
     g.setFont (juce::Font (11.0f));
-    g.drawText ("CHAIN PRESETS", 619, 37, 256, 18, juce::Justification::left);
+    g.drawText ("24 VOCAL CHAIN PRESETS", 641, 100, 303, 18, juce::Justification::left);
 
     paintMonitor (g);
 
-    g.setColour (juce::Colour (0xf00f081d));
-    g.fillRoundedRectangle (19.0f, 409.0f, 1082.0f, 277.0f, 16.0f);
-    g.setColour (violet.withAlpha (0.6f));
-    g.drawRoundedRectangle (19.0f, 409.0f, 1082.0f, 277.0f, 16.0f, 1.0f);
+    // The eight separate jewel cards are REAL JUCE buttons, drawn by
+    // DreamVoxEffectCard::paintButton, not images painted on this background.
+    g.setColour (juce::Colour (0xff160b26));
+    g.fillRoundedRectangle (16.0f, 303.0f, 1088.0f, 146.0f, 16.0f);
+    g.setColour (juce::Colour (0xff64365e));
+    g.drawRoundedRectangle (16.0f, 303.0f, 1088.0f, 146.0f, 16.0f, 1.0f);
+
+    const auto detail = juce::Rectangle<float> (20.0f, 458.0f, 1080.0f, 241.0f);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff24102f),
+                                            20, 458, juce::Colour (0xff0f091c),
+                                            1100, 699, false));
+    g.fillRoundedRectangle (detail, 16.0f);
+    g.setColour (juce::Colour (0xff93517d));
+    g.drawRoundedRectangle (detail, 16.0f, 1.3f);
 
     const auto& bank = DreamVoxPresets::effectBanks[static_cast<size_t> (selectedModule)];
     g.setColour (pearl);
-    g.setFont (juce::Font (23.0f, juce::Font::bold));
-    g.drawText (bank.name, 38, 418, 222, 34, juce::Justification::left);
+    g.setFont (juce::Font (24.0f, juce::Font::bold));
+    g.drawText (bank.name, 40, 466, 315, 35, juce::Justification::left);
     g.setColour (muted);
     g.setFont (juce::Font (12.0f));
-    g.drawText (bank.description, 38, 457, 554, 19, juce::Justification::left);
-    g.drawText ("EFFECT PRESET  •  changes only this module", 560, 419, 400, 20,
-                juce::Justification::left);
+    g.drawText (bank.description, 40, 500, 638, 21, juce::Justification::left);
+    g.setColour (juce::Colour (0xfff3b2dc));
+    g.setFont (juce::Font (11.0f, juce::Font::bold));
+    g.drawText ("EFFECT PRESET", 746, 463, 270, 18, juce::Justification::left);
+
     paintSelectedModuleMonitor (g);
+
+    g.setColour (juce::Colour (0xf20a0617));
+    g.fillRoundedRectangle (20.0f, 704.0f, 1080.0f, 30.0f, 12.0f);
+    g.setColour (juce::Colour (0xff854977));
+    g.drawRoundedRectangle (20.0f, 704.0f, 1080.0f, 30.0f, 12.0f, 1.0f);
     g.setColour (muted);
     g.setFont (juce::Font (11.0f));
-    g.drawText ("LIVE AUDIO • PRESETS ARE EDITABLE • YOUR ORIGINAL DREAMVOX IS SAFE",
-                38, 686, 900, 24, juce::Justification::left);
+    g.drawText ("VELVET NIGHTS  /  LIVE AUDIO  /  8 EDITABLE EFFECTS",
+                37, 705, 720, 27, juce::Justification::left);
+    g.setColour (juce::Colour (0xfff5abd8));
+    g.drawText ("DreamVox 5", 935, 705, 150, 27, juce::Justification::right);
 }
 
 void DreamVoxAudioProcessorEditor::resized()
 {
     if (controls.size() != 20) return;
-    presetSelector.setBounds (610, 67, 280, 30);
-    bypass.setBounds (970, 66, 118, 31);
+
+    presetSelector.setBounds (634, 53, 321, 34);
+    bypass.setBounds (989, 51, 112, 36);
     for (int i = 0; i < 8; ++i)
-        moduleButtons[static_cast<size_t> (i)].setBounds (20 + i * 136, 336, 128, 63);
-    effectPresetSelector.setBounds (568, 446, 352, 31);
+        moduleButtons[static_cast<size_t> (i)].setBounds (21 + i * 135, 310, 127, 134);
+
+    effectPresetSelector.setBounds (745, 485, 336, 30);
     for (int j = 0; j < moduleCounts[selectedModule]; ++j)
     {
         const int id = moduleKnobs[selectedModule][j];
-        const int x = 53 + j * 176;
-        sectionLabels[id]->setBounds (x - 3, 496, 114, 18);
-        controls[id]->setBounds (x, 518, 112, 123);
+        const int x = 54 + j * 171;
+        sectionLabels[id]->setBounds (x - 6, 531, 124, 18);
+        controls[id]->setBounds (x, 548, 113, 133);
     }
-    sectionLabels[7]->setBounds (990, 492, 102, 18);
-    controls[7]->setBounds (990, 515, 101, 126);
+    sectionLabels[7]->setBounds (984, 533, 106, 18);
+    controls[7]->setBounds (983, 549, 109, 132);
 }
