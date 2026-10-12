@@ -1,10 +1,10 @@
 #pragma once
-#include <JuceHeader.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <utility>
 #include <array>
 
 // DreamVox factory presets v0.2.
-// Only uses parameters actually implemented in the current DSP.
-// Reverb, echo and stereo doubling are intentionally excluded until implemented.
+// Uses the current DSP controls, including spatial effects.
 namespace DreamVoxPresets
 {
 struct Preset
