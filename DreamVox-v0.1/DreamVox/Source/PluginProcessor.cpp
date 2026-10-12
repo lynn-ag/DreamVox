@@ -30,6 +30,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout DreamVoxAudioProcessor::crea
     p.add (knob ("echoTime", "DELAY TIME", 80.0f, 850.0f, 330.0f, " ms"));
     p.add (knob ("feedback", "FEEDBACK", 0.0f, 65.0f, 24.0f, "%"));
     p.add (knob ("doubler", "DOUBLER", 0.0f, 100.0f, 0.0f, "%"));
+    // Additional independent effect controls; original parameter IDs remain unchanged.
+    p.add (knob ("highpass", "CLEAN HIGH-PASS", 20.0f, 250.0f, 25.0f, " Hz"));
+    p.add (knob ("gateThreshold", "GATE FLOOR", -85.0f, -25.0f, -85.0f, " dB"));
+    p.add (knob ("compAttack", "COMP ATTACK", 2.0f, 80.0f, 12.0f, " ms"));
+    p.add (knob ("compRelease", "COMP RELEASE", 40.0f, 450.0f, 120.0f, " ms"));
+    p.add (knob ("deessFreq", "DE-ESS FREQUENCY", 4000.0f, 10000.0f, 6200.0f, " Hz"));
+    p.add (knob ("doublerSpread", "DOUBLER SPREAD", 12.0f, 40.0f, 18.0f, " ms"));
     p.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID {"bypass", 1}, "BYPASS", false));
     return p;
 }
@@ -62,7 +69,16 @@ void DreamVoxAudioProcessor::prepareToPlay (double sr, int)
     delayWet.setCurrentAndTargetValue (0.0f);
     reverbWet.setCurrentAndTargetValue (0.0f);
     doubleWet.setCurrentAndTargetValue (0.0f);
-    compEnvelope = deEssEnvelope = 0.0f;
+    compEnvelope = deEssEnvelope = gateEnvelope = 0.0f;
+    gateGain = 1.0f;
+    for (int i = 0; i < 2; ++i)
+        cleanHpIn[i] = cleanHpOut[i] = 0.0f;
+    for (auto& sample : waveform) sample.store (0.0f, std::memory_order_relaxed);
+    waveformWrite.store (0, std::memory_order_release);
+    for (auto& p : inputPeaks) p.store (0.0f, std::memory_order_relaxed);
+    for (auto& p : outputPeaks) p.store (0.0f, std::memory_order_relaxed);
+    compressorReductionDb.store (0.0f, std::memory_order_relaxed);
+    deesserReductionDb.store (0.0f, std::memory_order_relaxed);
     for (int i=0;i<2;++i) detectorIn[i] = detectorHp[i] = 0.0f;
 }
 void DreamVoxAudioProcessor::releaseResources() {}
@@ -87,7 +103,24 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 {
     juce::ScopedNoDenormals noDenormals;
     const int channels=buffer.getNumChannels(), samples=buffer.getNumSamples();
-    if (parameters.getRawParameterValue("bypass")->load() > 0.5f) return;
+    for (int ch = 0; ch < 2; ++ch)
+        inputPeaks[static_cast<size_t> (ch)].store (
+            ch < channels && samples > 0 ? buffer.getMagnitude (ch, 0, samples) : 0.0f,
+            std::memory_order_relaxed);
+    if (parameters.getRawParameterValue("bypass")->load() > 0.5f)
+    {
+        publishMonitoring (buffer, 0.0f, 0.0f);
+        return;
+    }
+    float blockCompReduction = 0.0f, blockDeessReduction = 0.0f;
+    const float hpHz = parameters.getRawParameterValue ("highpass")->load();
+    const float gateFloor = parameters.getRawParameterValue ("gateThreshold")->load();
+    const float attackMs = parameters.getRawParameterValue ("compAttack")->load();
+    const float releaseMs = parameters.getRawParameterValue ("compRelease")->load();
+    const float deessHz = parameters.getRawParameterValue ("deessFreq")->load();
+    const float spreadMs = parameters.getRawParameterValue ("doublerSpread")->load();
+    const float cleanHpCoef = std::exp (-2.0f * pi * hpHz / static_cast<float> (sampleRate));
+    const float gateThresholdLinear = juce::Decibels::decibelsToGain (gateFloor);
     const float lowDb=parameters.getRawParameterValue("low")->load();
     const float bodyDb=parameters.getRawParameterValue("body")->load();
     const float airDb=parameters.getRawParameterValue("air")->load();
@@ -123,11 +156,11 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     const double alpha=std::sin(w)/(2.0*0.8), c=std::cos(w);
     midBell.set(1+alpha*A, -2*c, 1-alpha*A, 1+alpha/A, -2*c, 1-alpha/A);
 
-    const float compAtk=std::exp(-1.0f/(0.012f*static_cast<float>(sampleRate)));
-    const float compRel=std::exp(-1.0f/(0.120f*static_cast<float>(sampleRate)));
+    const float compAtk=std::exp(-1.0f/(0.001f*attackMs*static_cast<float>(sampleRate)));
+    const float compRel=std::exp(-1.0f/(0.001f*releaseMs*static_cast<float>(sampleRate)));
     const float deAtk=std::exp(-1.0f/(0.003f*static_cast<float>(sampleRate)));
     const float deRel=std::exp(-1.0f/(0.080f*static_cast<float>(sampleRate)));
-    const float hpA=std::exp(-2.0f*pi*6200.0f/static_cast<float>(sampleRate));
+    const float hpA=std::exp(-2.0f*pi*deessHz/static_cast<float>(sampleRate));
     const float satDrive=1.0f+warmth*3.5f, satNorm=std::tanh(satDrive);
     const float thresholdLin=juce::Decibels::decibelsToGain(threshold);
     const float makeup=juce::Decibels::decibelsToGain(juce::jmax(0.0f, -threshold*0.10f));
@@ -139,6 +172,11 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         detector /= static_cast<float>(juce::jmax(1,channels));
         const float compCoef=detector>compEnvelope ? compAtk : compRel;
         compEnvelope=compCoef*compEnvelope+(1.0f-compCoef)*detector;
+        // Gently open and close the gate; -85 dB disables it.
+        const float gateFollower = detector > gateEnvelope ? 0.10f : 0.002f;
+        gateEnvelope += (detector - gateEnvelope) * gateFollower;
+        const float gateTarget = gateFloor <= -84.9f || gateEnvelope >= gateThresholdLinear ? 1.0f : 0.0f;
+        gateGain += (gateTarget - gateGain) * (gateTarget > gateGain ? 0.008f : 0.0015f);
         float compGain=1.0f;
         if (compEnvelope>thresholdLin)
         {
@@ -146,6 +184,8 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             const float reduced=threshold+(level-threshold)/ratio;
             compGain=juce::Decibels::decibelsToGain(reduced-level)*makeup;
         }
+        blockCompReduction = juce::jmax (blockCompReduction,
+            juce::jmax (0.0f, -juce::Decibels::gainToDecibels (compGain, -90.0f)));
         float deGain=1.0f;
         for (int ch=0;ch<channels;++ch)
         {
@@ -155,22 +195,30 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             deEssEnvelope=(std::abs(hp)>deEssEnvelope?deAtk:deRel)*deEssEnvelope+(1.0f-(std::abs(hp)>deEssEnvelope?deAtk:deRel))*std::abs(hp);
         }
         if (deEssEnvelope>0.12f) deGain=1.0f-deEss*juce::jlimit(0.0f,0.65f,(deEssEnvelope-0.12f)*2.5f);
+        blockDeessReduction = juce::jmax (blockDeessReduction,
+            juce::jmax (0.0f, -juce::Decibels::gainToDecibels (deGain, -90.0f)));
         const float echoMix = delayWet.getNextValue();
         const float doublerMix = doubleWet.getNextValue();
         for (int ch=0;ch<channels;++ch)
         {
             float x=buffer.getSample(ch,n);
-            x=lowShelf.process(x,ch); x=midBell.process(x,ch); x=highShelf.process(x,ch);
-            const float hp=detectorHp[ch];
-            x += hp*(deGain-1.0f);
-            x *= compGain;
+            // First-order sub-bass cleanup, then existing 3-band musical EQ.
+            const float hp = cleanHpCoef * (cleanHpOut[ch] + x - cleanHpIn[ch]);
+            cleanHpIn[ch] = x;
+            cleanHpOut[ch] = hp;
+            x = lowShelf.process(hp, ch);
+            x = midBell.process(x, ch);
+            x = highShelf.process(x, ch);
+            const float deessSignal = detectorHp[ch];
+            x += deessSignal*(deGain-1.0f);
+            x *= compGain * gateGain;
             const float saturated=std::tanh(x*satDrive)/satNorm;
             x=(x*(1.0f-warmth)+saturated*warmth)*output;
             const int length = delayBuffer.getNumSamples();
             const int delaySamples = juce::jlimit (1, length - 2, static_cast<int> (delayMs * 0.001f * sampleRate));
             const int read = (delayWrite + length - delaySamples) % length;
             const float echoSample = delayBuffer.getSample (ch, read);
-            const int doublerOffset = static_cast<int> (sampleRate * (ch == 0 ? 0.018 : 0.027));
+            const int doublerOffset = static_cast<int> (sampleRate * 0.001 * spreadMs * (ch == 0 ? 1.0 : 1.5));
             const int doubleRead = (delayWrite + length - doublerOffset) % length;
             const float doubled = delayBuffer.getSample (ch, doubleRead);
             delayBuffer.setSample (ch, delayWrite, x + echoSample * feedback);
@@ -181,7 +229,11 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         delayWrite = (delayWrite + 1) % delayBuffer.getNumSamples();
     }
     jassert (samples <= wetBuffer.getNumSamples());
-    if (samples > wetBuffer.getNumSamples()) return;
+    if (samples > wetBuffer.getNumSamples())
+    {
+        publishMonitoring (buffer, blockCompReduction, blockDeessReduction);
+        return;
+    }
     for (int ch = 0; ch < channels; ++ch)
         wetBuffer.copyFrom (ch, 0, buffer, ch, 0, samples);
     if (channels == 1)
@@ -194,6 +246,33 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         for (int ch = 0; ch < channels; ++ch)
             buffer.setSample (ch, n, buffer.getSample (ch, n) * (1.0f - mix) + wetBuffer.getSample (ch, n) * mix);
     }
+    publishMonitoring (buffer, blockCompReduction, blockDeessReduction);
+}
+
+void DreamVoxAudioProcessor::publishMonitoring (const juce::AudioBuffer<float>& buffer,
+                                                float compressorDb, float deesserDb) noexcept
+{
+    const int channels = buffer.getNumChannels(), samples = buffer.getNumSamples();
+    for (int ch = 0; ch < 2; ++ch)
+        outputPeaks[static_cast<size_t> (ch)].store (
+            ch < channels && samples > 0 ? buffer.getMagnitude (ch, 0, samples) : 0.0f,
+            std::memory_order_relaxed);
+    compressorReductionDb.store (compressorDb, std::memory_order_relaxed);
+    deesserReductionDb.store (deesserDb, std::memory_order_relaxed);
+
+    // Single audio-thread writer; no allocation, DSP locks or GUI access.
+    unsigned int write = waveformWrite.load (std::memory_order_relaxed);
+    for (int n = 0; n < samples; ++n)
+    {
+        float mono = 0.0f;
+        for (int ch = 0; ch < channels; ++ch)
+            mono += buffer.getSample (ch, n);
+        if (channels > 0)
+            mono /= static_cast<float> (channels);
+        waveform[write % monitorSize].store (mono, std::memory_order_relaxed);
+        ++write;
+    }
+    waveformWrite.store (write, std::memory_order_release);
 }
 
 juce::AudioProcessorEditor* DreamVoxAudioProcessor::createEditor() { return new DreamVoxAudioProcessorEditor (*this); }
