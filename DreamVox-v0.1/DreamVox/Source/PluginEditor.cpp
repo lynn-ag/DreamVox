@@ -5,6 +5,147 @@
 
 namespace
 {
+// All eight cards and the large controls are real JUCE components,
+// styled to match the Velvet Nights artwork instead of covering it.
+class NeonLookAndFeel final : public juce::LookAndFeel_V4
+{
+public:
+    void drawButtonBackground (juce::Graphics& g, juce::Button& button,
+                               const juce::Colour&, bool hover, bool pressed) override
+    {
+        auto r = button.getLocalBounds().toFloat().reduced (3.0f);
+        const bool active = button.getToggleState();
+        const auto edge = active ? juce::Colour (0xffff9de3) : juce::Colour (0xffa077bd);
+        g.setColour ((active ? juce::Colour (0xffed54b8) : juce::Colour (0xff813865))
+                        .withAlpha (active ? 0.28f : 0.11f));
+        g.fillRoundedRectangle (r.expanded (2.0f), 15.0f);
+        juce::ColourGradient fill (juce::Colour (0xff29152f), r.getX(), r.getY(),
+                                   juce::Colour (0xff0c0817), r.getRight(), r.getBottom(), false);
+        if (hover || pressed) fill.addColour (0.55, juce::Colour (0xff482347));
+        g.setGradientFill (fill);
+        g.fillRoundedRectangle (r, 12.0f);
+        g.setColour (edge.withAlpha (active ? 0.95f : 0.56f));
+        g.drawRoundedRectangle (r, 12.0f, active ? 2.0f : 1.0f);
+
+        const auto label = button.getButtonText();
+        const float cx = r.getCentreX(), cy = r.getY() + 33.0f;
+        const juce::Colour neon (0xfff482d3);
+        g.setColour (neon.withAlpha (0.19f));
+        g.fillEllipse (cx - 25.0f, cy - 25.0f, 50.0f, 50.0f);
+        g.setColour (neon);
+
+        if (label == "CLEAN")
+        {
+            juce::Path gem;
+            gem.startNewSubPath (cx, cy - 19); gem.lineTo (cx + 15, cy);
+            gem.lineTo (cx, cy + 20); gem.lineTo (cx - 15, cy); gem.closeSubPath();
+            g.setColour (juce::Colour (0xff8fbdff));
+            g.fillPath (gem);
+            g.setColour (juce::Colour (0xfffef2ff));
+            g.strokePath (gem, juce::PathStrokeType (1.4f));
+            g.drawLine (cx - 15, cy, cx + 15, cy, 1.0f);
+        }
+        else if (label == "COMP")
+        {
+            g.setGradientFill (juce::ColourGradient (juce::Colour (0xffffcadf),
+                cx - 12.0f, cy - 15.0f, juce::Colour (0xffb34887),
+                cx + 15.0f, cy + 15.0f, true));
+            g.fillEllipse (cx - 19.0f, cy - 19.0f, 38.0f, 38.0f);
+            g.setColour (juce::Colour (0xfffaddf4));
+            g.drawEllipse (cx - 19.0f, cy - 19.0f, 38.0f, 38.0f, 1.4f);
+        }
+        else if (label == "EQ")
+        {
+            g.setColour (neon);
+            g.fillEllipse (cx - 19.0f, cy - 16.0f, 18.0f, 19.0f);
+            g.fillEllipse (cx + 1.0f, cy - 16.0f, 18.0f, 19.0f);
+            g.fillEllipse (cx - 14.0f, cy + 1.0f, 13.0f, 14.0f);
+            g.fillEllipse (cx + 1.0f, cy + 1.0f, 13.0f, 14.0f);
+        }
+        else if (label == "DE-ESS")
+        {
+            for (int i = -7; i <= 7; ++i)
+            {
+                const float h = 4.0f + 14.0f *
+                     (0.5f + 0.5f * std::sin (i * 1.7f + 0.5f));
+                g.drawLine (cx + i * 3.2f, cy - h, cx + i * 3.2f, cy + h, 1.7f);
+            }
+        }
+        else if (label == "TONE")
+        {
+            juce::Path heart;
+            heart.startNewSubPath (cx, cy + 19.0f);
+            heart.cubicTo (cx - 43, cy - 9, cx - 14, cy - 24, cx, cy - 7);
+            heart.cubicTo (cx + 14, cy - 24, cx + 43, cy - 9, cx, cy + 19);
+            g.fillPath (heart);
+            g.setColour (juce::Colour (0xffffd9f3));
+            g.strokePath (heart, juce::PathStrokeType (1.0f));
+        }
+        else if (label == "SPACE")
+        {
+            g.setColour (juce::Colour (0xffb8b1ff));
+            g.fillEllipse (cx - 22, cy - 4, 26, 20);
+            g.fillEllipse (cx - 8, cy - 16, 27, 30);
+            g.fillEllipse (cx + 6, cy - 4, 22, 19);
+            g.fillRoundedRectangle (cx - 19, cy + 5, 40, 13, 6);
+        }
+        else if (label == "ECHO")
+        {
+            g.setColour (neon);
+            g.drawEllipse (cx - 21, cy - 11, 42, 23, 2.5f);
+            g.drawEllipse (cx - 12, cy - 19, 24, 39, 1.2f);
+            g.fillEllipse (cx + 16, cy - 12, 7, 7);
+        }
+        else if (label == "DOUBLER")
+        {
+            g.setColour (neon);
+            g.drawEllipse (cx - 23, cy - 15, 31, 31, 2.6f);
+            g.drawEllipse (cx - 8, cy - 15, 31, 31, 2.6f);
+        }
+        g.setColour (juce::Colour (0xfffff2ff));
+        g.setFont (juce::Font (14.0f, juce::Font::bold));
+        g.drawText (label, r.withY (r.getBottom() - 27.0f).withHeight (22.0f),
+                    juce::Justification::centred);
+    }
+
+    void drawButtonText (juce::Graphics&, juce::TextButton&, bool, bool) override
+    {
+        // Card titles and icons are drawn together above.
+    }
+
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
+                           float sliderPos, float startAngle, float endAngle,
+                           juce::Slider&) override
+    {
+        const float centreX = x + width * 0.5f;
+        const float centreY = y + height * 0.44f;
+        const float radius = juce::jmin (width, height) * 0.31f;
+        g.setColour (juce::Colour (0xff080715));
+        g.fillEllipse (centreX - radius + 4, centreY - radius + 4,
+                       (radius - 4) * 2, (radius - 4) * 2);
+        juce::Path arc;
+        arc.addCentredArc (centreX, centreY, radius, radius, 0.0f,
+                            startAngle, endAngle, true);
+        g.setColour (juce::Colour (0xff4a385c));
+        g.strokePath (arc, juce::PathStrokeType (7.0f));
+        juce::Path bright;
+        const float angle = startAngle + sliderPos * (endAngle - startAngle);
+        bright.addCentredArc (centreX, centreY, radius, radius, 0.0f,
+                              startAngle, angle, true);
+        g.setColour (juce::Colour (0xfff783d2).withAlpha (0.22f));
+        g.strokePath (bright, juce::PathStrokeType (12.0f));
+        g.setColour (juce::Colour (0xffff91dc));
+        g.strokePath (bright, juce::PathStrokeType (5.0f));
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff4b284e),
+              centreX - radius / 2, centreY - radius / 2,
+              juce::Colour (0xff100b1e), centreX + radius / 2, centreY + radius, true));
+        g.fillEllipse (centreX - radius * 0.57f, centreY - radius * 0.57f,
+                       radius * 1.14f, radius * 1.14f);
+        g.setColour (juce::Colour (0xffffe3f5));
+        g.fillEllipse (centreX + std::sin (angle) * radius - 4.5f,
+                       centreY - std::cos (angle) * radius - 4.5f, 9.0f, 9.0f);
+    }
+};
 const char* ids[] {
     "low", "body", "air", "threshold", "ratio", "deess", "warmth",
     "output", "space", "room", "echo", "echoTime", "feedback", "doubler",
@@ -35,11 +176,14 @@ float levelToNorm (float level)
 DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    neonLookAndFeel = std::make_unique<NeonLookAndFeel>();
+    setLookAndFeel (neonLookAndFeel.get());
     for (int i = 0; i < 20; ++i)
     {
         auto* slider = controls.add (new juce::Slider());
         slider->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-        slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 100, 22);
+        slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 74, 20);
+        slider->setNumDecimalPlacesToDisplay (i == 11 || i == 14 || i == 16 || i == 17 || i == 18 || i == 19 ? 0 : 1);
         slider->setColour (juce::Slider::rotarySliderFillColourId, pink);
         slider->setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff423253));
         slider->setColour (juce::Slider::thumbColourId, pearl);
@@ -117,6 +261,12 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
     startTimerHz (24);
 }
 
+DreamVoxAudioProcessorEditor::~DreamVoxAudioProcessorEditor()
+{
+    stopTimer();
+    setLookAndFeel (nullptr);
+}
+
 void DreamVoxAudioProcessorEditor::selectModule (int index)
 {
     if (index < 0 || index >= 8) return;
@@ -131,9 +281,11 @@ void DreamVoxAudioProcessorEditor::selectModule (int index)
     }
 
     for (int i = 0; i < 8; ++i)
-        moduleButtons[static_cast<size_t> (i)].setColour (
-            juce::TextButton::buttonColourId,
-            i == selectedModule ? juce::Colour (0xff793261) : panel);
+    {
+        auto& button = moduleButtons[static_cast<size_t> (i)];
+        button.setToggleState (i == selectedModule, juce::dontSendNotification);
+        button.repaint();
+    }
 
     effectPresetSelector.clear (juce::dontSendNotification);
     effectPresetSelector.addItem ("Choose an effect preset...", 1);
