@@ -1,6 +1,6 @@
 #include "PluginEditor.h"
 #include "FactoryPresets.h"
-
+#include <BinaryData.h>
 namespace
 {
 const juce::String ids[] {"low", "body", "air", "threshold", "ratio", "deess", "warmth", "output", "space", "room", "echo", "echoTime", "feedback", "doubler"};
@@ -61,6 +61,24 @@ setSize (1010, 570);
 void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
 {
     auto bounds=getLocalBounds().toFloat();
+int artworkSize = 0;
+const auto* artworkData =
+    BinaryData::getNamedResource(
+        "DreamVox_Neon_Vocal_Suite_png",
+        artworkSize);
+
+if (artworkData != nullptr && artworkSize > 0)
+{
+    auto artwork = juce::ImageFileFormat::loadFrom(
+        artworkData, artworkSize);
+
+    if (artwork.isValid())
+    {
+        g.drawImage(artwork, getLocalBounds().toFloat(),
+                    juce::RectanglePlacement::stretchToFit);
+        return;
+    }
+}
     juce::ColourGradient bg (juce::Colour (0xff1d1d31), 0.0f, 0.0f, ink, 1010.0f, 570.0f, false);
     g.setGradientFill (bg); g.fillAll();
     g.setColour (juce::Colour (0x1877e2d1)); g.fillEllipse (540.0f, -125.0f, 310.0f, 310.0f);
