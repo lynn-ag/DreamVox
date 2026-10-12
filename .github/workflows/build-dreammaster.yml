@@ -16,6 +16,8 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare artwork
+        run: python Artwork/prepare-artwork.py
       - name: Configure
         run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
       - name: Build plugin and DSP tests

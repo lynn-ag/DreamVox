@@ -1,20 +1,21 @@
 #pragma once
 #include "PluginProcessor.h"
-class DreamMasterEditor final : public juce::AudioProcessorEditor,private juce::Timer
-{
+#include "../../Artwork/NightLook.h"
+class DreamMasterEditor final : public juce::AudioProcessorEditor,private juce::Timer {
 public:
     explicit DreamMasterEditor(DreamMasterProcessor&);
     ~DreamMasterEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
-    void timerCallback() override { repaint(); }
+    void timerCallback() override {repaint();}
     DreamMasterProcessor& processor;
-    juce::LookAndFeel_V4 look;
+    night::Look look{true};
+    juce::Image artwork;
     std::array<juce::Slider,9> controls;
     std::array<juce::Label,9> labels;
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,9> attachments;
-    juce::ComboBox presets;
+    juce::ComboBox presets,zoom;
     juce::ToggleButton bypass{"BYPASS"},lowCut{"LOW CUT 22 Hz"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment,cutAttachment;
     juce::TooltipWindow tips{this,500};

@@ -1,0 +1,26 @@
+DreamVox 0.3.0 Velvet Nights / DreamMaster 0.2.0 Midnight Horizon
+Windows x64 VST3
+
+1. Close FL Studio. Back up any existing DreamVox.vst3 and DreamMaster.vst3
+   bundles outside all plugin scan folders.
+2. Extract the download. Copy the COMPLETE .vst3 folder, including Contents,
+   into C:\Program Files\Common Files\VST3\ (administrator access may be needed).
+3. In FL Studio's Plugin Manager enable Verify plugins, Rescan plugins with
+   errors and Rescan previously verified plugins. Click Find installed plugins.
+4. Load DreamVox on the vocal mixer track; load DreamMaster on the master.
+5. Test on a copy of your project: move controls, check bypass, close/reopen
+   the editor, and save/reload the project to confirm settings recall.
+
+These versions keep the previous plugin identities and parameter IDs. They
+replace earlier versions; do not keep duplicate versions in scan folders.
+To roll back, close FL Studio, restore the backed-up bundles and rescan.
+
+Use the 80% size setting for small displays. Double-click a knob to reset it;
+click its value to enter an exact setting. Presets replace processing settings.
+Start DreamMaster with Gentle polish and Loudness at 0 dB. Its ceiling is
+sample-peak based; it does not guarantee true peaks or measure LUFS.
+
+The graphics are adapted to the implemented controls. See README.md for scope.
+BUILD.txt identifies the exact source and build; validation contains automated
+tests and real editor screenshots. Automated checks do not certify FL Studio
+scanning or playback on every system.
