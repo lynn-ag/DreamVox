@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "FactoryPresets.h"
 
 namespace
 {
@@ -30,6 +31,24 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
         label->setFont (juce::Font (12.0f, juce::Font::bold));
         addAndMakeVisible (*slider); addAndMakeVisible (*label);
     }
+    presetSelector.addItem ("Select a factory preset...", 1);
+    for (size_t i = 0; i < DreamVoxPresets::factory.size(); ++i)
+    {
+        const auto& preset = DreamVoxPresets::factory[i];
+        presetSelector.addItem (juce::String (preset.category) + " / " + preset.name,
+                                static_cast<int> (i) + 2);
+    }
+    presetSelector.setSelectedId (1, juce::dontSendNotification);
+    presetSelector.onChange = [this]
+    {
+        const int index = presetSelector.getSelectedId() - 2;
+        if (index >= 0 && index < static_cast<int> (DreamVoxPresets::factory.size()))
+            DreamVoxPresets::apply (processor.parameters, DreamVoxPresets::factory[static_cast<size_t> (index)]);
+    };
+    presetSelector.setColour (juce::ComboBox::backgroundColourId, panel);
+    presetSelector.setColour (juce::ComboBox::textColourId, pearl);
+    presetSelector.setColour (juce::ComboBox::outlineColourId, violet);
+    addAndMakeVisible (presetSelector);
     bypass.setColour (juce::ToggleButton::textColourId, pearl);
     bypass.setColour (juce::ToggleButton::tickColourId, aqua);
     bypass.setColour (juce::ToggleButton::tickDisabledColourId, muted);
@@ -66,5 +85,6 @@ void DreamVoxAudioProcessorEditor::resized()
         sectionLabels[i]->setBounds (x-10, y, 114, 18);
         controls[i]->setBounds (x, y+21, size, 118);
     }
+    presetSelector.setBounds (404, 71, 322, 27);
     bypass.setBounds (625, 476, 105, 25);
 }
