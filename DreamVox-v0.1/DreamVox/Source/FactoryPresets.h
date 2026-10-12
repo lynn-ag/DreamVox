@@ -52,7 +52,11 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Preset& pres
         {"deess", preset.deess}, {"warmth", preset.warmth},
         {"output", preset.output}, {"space", preset.space}, {"room", preset.room},
         {"echo", preset.echo}, {"echoTime", preset.echoTime},
-        {"feedback", preset.feedback}, {"doubler", preset.doubler}
+        {"feedback", preset.feedback}, {"doubler", preset.doubler},
+        // A full-chain preset must reset newer module parameters too.
+        {"highpass", 25.0f}, {"gateThreshold", -85.0f},
+        {"compAttack", 12.0f}, {"compRelease", 120.0f},
+        {"deessFreq", 6200.0f}, {"doublerSpread", 18.0f}
     };
     for (const auto& item : values)
         if (auto* param = state.getParameter (item.first))
