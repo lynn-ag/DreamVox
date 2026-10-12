@@ -24,6 +24,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout DreamVoxAudioProcessor::crea
     p.add (knob ("deess", "DE-ESS", 0.0f, 100.0f, 28.0f, "%"));
     p.add (knob ("warmth", "WARMTH", 0.0f, 100.0f, 14.0f, "%"));
     p.add (knob ("output", "OUTPUT", -12.0f, 12.0f, 0.0f, " dB"));
+    p.add (knob ("space", "REVERB", 0.0f, 100.0f, 0.0f, "%"));
+    p.add (knob ("room", "ROOM SIZE", 0.0f, 100.0f, 45.0f, "%"));
+    p.add (knob ("echo", "DELAY MIX", 0.0f, 100.0f, 0.0f, "%"));
+    p.add (knob ("echoTime", "DELAY TIME", 80.0f, 850.0f, 330.0f, " ms"));
+    p.add (knob ("feedback", "FEEDBACK", 0.0f, 65.0f, 24.0f, "%"));
+    p.add (knob ("doubler", "DOUBLER", 0.0f, 100.0f, 0.0f, "%"));
     p.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID {"bypass", 1}, "BYPASS", false));
     return p;
 }
@@ -45,6 +51,16 @@ void DreamVoxAudioProcessor::prepareToPlay (double sr, int)
 {
     sampleRate = juce::jmax (8000.0, sr);
     lowShelf.reset(); midBell.reset(); highShelf.reset();
+    reverb.setSampleRate (sampleRate);
+    reverb.reset();
+    delayBuffer.setSize (2, static_cast<int> (sampleRate * 2.0) + 4);
+    delayBuffer.clear();
+    delayWrite = 0;
+    for (auto* s : { &delayWet, &reverbWet, &doubleWet })
+        s->reset (sampleRate, 0.03);
+    delayWet.setCurrentAndTargetValue (0.0f);
+    reverbWet.setCurrentAndTargetValue (0.0f);
+    doubleWet.setCurrentAndTargetValue (0.0f);
     compEnvelope = deEssEnvelope = 0.0f;
     for (int i=0;i<2;++i) detectorIn[i] = detectorHp[i] = 0.0f;
 }
@@ -78,6 +94,19 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     const float ratio=parameters.getRawParameterValue("ratio")->load();
     const float deEss=parameters.getRawParameterValue("deess")->load()/100.0f;
     const float warmth=parameters.getRawParameterValue("warmth")->load()/100.0f;
+    delayWet.setTargetValue (parameters.getRawParameterValue("echo")->load() * 0.01f);
+    reverbWet.setTargetValue (parameters.getRawParameterValue("space")->load() * 0.01f);
+    doubleWet.setTargetValue (parameters.getRawParameterValue("doubler")->load() * 0.01f);
+    const float delayMs = parameters.getRawParameterValue("echoTime")->load();
+    const float feedback = parameters.getRawParameterValue("feedback")->load() * 0.01f;
+    juce::Reverb::Parameters rev;
+    rev.roomSize = 0.15f + parameters.getRawParameterValue("room")->load() * 0.0075f;
+    rev.damping = 0.55f;
+    rev.wetLevel = 1.0f;
+    rev.dryLevel = 0.0f;
+    rev.width = 0.85f;
+    rev.freezeMode = 0.0f;
+    reverb.setParameters (rev);
     const float output=juce::Decibels::decibelsToGain(parameters.getRawParameterValue("output")->load());
 
     auto setShelf = [this] (Biquad& f, float hz, float gainDb, bool high)
@@ -134,6 +163,16 @@ void DreamVoxAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             x *= compGain;
             const float saturated=std::tanh(x*satDrive)/satNorm;
             x=(x*(1.0f-warmth)+saturated*warmth)*output;
+            const int length = delayBuffer.getNumSamples();
+            const int delaySamples = juce::jlimit (1, length - 2, static_cast<int> (delayMs * 0.001f * sampleRate));
+            const int read = (delayWrite + length - delaySamples) % length;
+            const float echoSample = delayBuffer.getSample (ch, read);
+            const int doublerOffset = static_cast<int> (sampleRate * (ch == 0 ? 0.018 : 0.027));
+            const int doubleRead = (delayWrite + length - doublerOffset) % length;
+            const float doubled = delayBuffer.getSample (ch, doubleRead);
+            delayBuffer.setSample (ch, delayWrite, x + echoSample * feedback);
+            x = x * (1.0f - 0.22f * doublerMix) + doubled * 0.22f * doublerMix;
+            x += echoSample * echoMix * 0.45f;
             buffer.setSample(ch,n,x);
         }
     }
