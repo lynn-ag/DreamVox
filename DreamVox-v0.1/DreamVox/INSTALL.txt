@@ -1,31 +1,36 @@
-DREAMVOX VST3 — FIRST BUILD
+DREAMVOX 5 NEON — WINDOWS x64 VST3
 
-This package contains the DreamVox JUCE project and a Windows build workflow.
-The current environment could not produce or test a Windows VST3 binary.
+This is a separate plugin from the original DreamVox.
+It has its own product name, VST3 plugin code and bundle ID.
+Do NOT rename an old DreamVox.vst3 bundle to DreamVox 5.vst3.
 
-AUTOMATED WINDOWS BUILD
+BUILD AND DOWNLOAD
 1. Open https://github.com/lynn-ag/DreamVox/actions
-2. Select Build DreamVox VST3 > Run workflow > Run workflow.
-   Builds also start automatically when changes are pushed.
-3. Wait for a green check, open that run, and scroll to Artifacts.
-   While signed into GitHub, download DreamVox-Windows-VST3.
-   Downloads are kept for 30 days; run the workflow again if one expires.
-4. Extract the ZIP and copy the entire DreamVox.vst3 folder into:
+2. Select the latest successful "Build DreamVox 5 Neon VST3" run
+   on branch "feature/neon-dreamvox-ui".
+3. Download the "DreamVox-5-Neon-Windows-VST3" artifact.
+4. Extract the ZIP. Copy the ENTIRE folder "DreamVox 5.vst3" into:
    C:\Program Files\Common Files\VST3\
    Keep its Contents folder and all files inside it together.
-5. Restart FL Studio and scan for plugins. Search for “DreamVox”.
+5. Leave your original DreamVox.vst3 installed and untouched.
+6. Restart FL Studio, go to Options > Manage plugins, and scan
+   without selecting "Rescan previously verified plugins".
+7. Search for "DreamVox 5". Verify it loads as an Effect.
 
-IF A BUILD FAILS
-Open the failed run, select Windows x64 Release, and expand the red step.
-Share the first error and the nearby lines when asking for help.
-If the workflow is missing, check that .github/workflows/build-dreamvox.yml
-is at the repository root, not inside DreamVox-v0.1/DreamVox.
+The GUI uses bundled moonlit artwork as a backdrop for fourteen
+real knobs, presets and bypass. The PNG is a flattened reference;
+its painted controls are NOT independent interactive widgets.
+The controls above the backdrop are the functioning DSP controls.
 
-If Windows asks for administrator permission when copying to the VST3 folder,
-approve the copy. The plugin is a 64-bit VST3.
+IF THE BUILD FAILS
+Open the failed GitHub Actions run, select "Windows x64 Release",
+expand the red step, and read/copy the first error.
 
-SIGNAL FLOW
-Low / Body / Air EQ > De-ess > Compression > Warmth > Output
+IF THE WRONG GUI APPEARS
+Check that the GitHub Actions run is NEWER than the "Package DreamVox 5
+bundle separately from original DreamVox" commit and that you installed
+"DreamVox 5.vst3" from that exact successful run, not a renamed old bundle.
+Close and reopen FL Studio after replacing the new bundle.
 
-This is an early prototype. Check gain staging and audition every control on
-your own voice before using it on a release.
+This is a development build, not a validated commercial release.
+Test controls and audio carefully before using it in a production project.
