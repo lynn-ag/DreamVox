@@ -9,6 +9,7 @@ public:
     void resized() override;
 private:
     DreamVoxAudioProcessor& processor;
+    juce::Image neonArtwork; // Decode once on editor creation, never during paint.
     juce::OwnedArray<juce::Slider> controls;
     juce::OwnedArray<juce::Label> sectionLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> attachments;
