@@ -11,7 +11,7 @@ const juce::Colour ink (0xff11121b), panel (0xff191b28), muted (0xff9296ac), pea
 DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    setSize (1010, 570);
+    
     for (int i=0;i<14;++i)
     {
         auto* slider=controls.add (new juce::Slider());
@@ -54,6 +54,8 @@ DreamVoxAudioProcessorEditor::DreamVoxAudioProcessorEditor (DreamVoxAudioProcess
     bypass.setColour (juce::ToggleButton::tickDisabledColourId, muted);
     bypassAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.parameters, "bypass", bypass);
     addAndMakeVisible (bypass);
+
+setSize (1010, 570);
 }
 
 void DreamVoxAudioProcessorEditor::paint (juce::Graphics& g)
