@@ -1,4 +1,6 @@
 #pragma once
+#include <array>
+#include <atomic>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
@@ -30,6 +32,15 @@ public:
     juce::AudioProcessorValueTreeState parameters;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // Read-only UI monitoring. Audio thread publishes atomically; GUI never locks the DSP.
+    static constexpr int monitorSize = 2048;
+    std::array<std::atomic<float>, monitorSize> waveform {};
+    std::atomic<unsigned int> waveformWrite {0};
+    std::array<std::atomic<float>, 2> inputPeaks {};
+    std::array<std::atomic<float>, 2> outputPeaks {};
+    std::atomic<float> compressorReductionDb {0.0f};
+    std::atomic<float> deesserReductionDb {0.0f};
+
 private:
     struct Biquad
     {
@@ -40,6 +51,9 @@ private:
         void reset() noexcept;
     };
     Biquad lowShelf, midBell, highShelf;
+    void publishMonitoring (const juce::AudioBuffer<float>&, float compressorDb, float deesserDb) noexcept;
+    float cleanHpIn[2] {0.0f, 0.0f}, cleanHpOut[2] {0.0f, 0.0f};
+    float gateEnvelope = 0.0f, gateGain = 1.0f;
     juce::Reverb reverb;
     juce::AudioBuffer<float> delayBuffer;
     juce::AudioBuffer<float> wetBuffer;
