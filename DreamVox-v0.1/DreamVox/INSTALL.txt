@@ -1,36 +1,48 @@
-DREAMVOX 5 NEON — WINDOWS x64 VST3
+DREAMVOX 5 — FUNCTIONAL EFFECT SUITE (WINDOWS x64 VST3)
 
-This is a separate plugin from the original DreamVox.
-It has its own product name, VST3 plugin code and bundle ID.
-Do NOT rename an old DreamVox.vst3 bundle to DreamVox 5.vst3.
+This is an experimental JUCE vocal-processing VST3 with a distinct plugin ID
+from the original DreamVox. Your original DreamVox.vst3 remains separate.
 
-BUILD AND DOWNLOAD
+INSTALL THE CORRECT BUILD
 1. Open https://github.com/lynn-ag/DreamVox/actions
-2. Select the latest successful "Build DreamVox 5 Neon VST3" run
-   on branch "feature/neon-dreamvox-ui".
-3. Download the "DreamVox-5-Neon-Windows-VST3" artifact.
-4. Extract the ZIP. Copy the ENTIRE folder "DreamVox 5.vst3" into:
+2. Find the LATEST successful "Build DreamVox 5 Neon VST3" run.
+   Its branch must be "feature/dreamvox5-functional-effects".
+3. Under Artifacts, download "DreamVox-5-Neon-Windows-VST3".
+4. Extract the ZIP. Copy the WHOLE folder "DreamVox 5.vst3" into
    C:\Program Files\Common Files\VST3\
-   Keep its Contents folder and all files inside it together.
-5. Leave your original DreamVox.vst3 installed and untouched.
-6. Restart FL Studio, go to Options > Manage plugins, and scan
-   without selecting "Rescan previously verified plugins".
-7. Search for "DreamVox 5". Verify it loads as an Effect.
+   Keep its Contents subfolder and all files.
+5. Replace the earlier DreamVox 5.vst3 installation if it exists.
+   DO NOT DELETE OR REPLACE the different "DreamVox.vst3" bundle.
+6. Restart FL Studio and run Options > Manage plugins > Find installed
+   plugins with "Rescan previously verified plugins" OFF.
+7. Open DreamVox 5 as an effect on a mixer insert. Play audio through it.
 
-The GUI uses bundled moonlit artwork as a backdrop for fourteen
-real knobs, presets and bypass. The PNG is a flattened reference;
-its painted controls are NOT independent interactive widgets.
-The controls above the backdrop are the functioning DSP controls.
+HOW TO USE
+- Eight real module tabs: CLEAN, COMP, EQ, DE-ESS, TONE, SPACE, ECHO, DOUBLER.
+  Click a tab to open its own adjustable DSP parameters.
+- "Choose an effect preset..." applies ONLY that module's parameters.
+  Each of the 8 modules has 4 relevant presets (32 module presets).
+- "Select a chain preset..." applies one of the 24 whole-vocal presets.
+- Input/output stereo peak meters, output waveform, FFT spectrum and
+  compressor/de-esser reduction readings use live processor signal data.
+- The always-visible OUTPUT control changes overall output level;
+  BYPASS disables processing while monitoring stays active.
+- New Clean high-pass and gate-floor controls, adjustable compressor
+  attack/release, de-esser detector frequency and doubler spread work
+  through the audio processor.
+- Your changes to parameters are saved with the FL Studio project.
+- The image is decorative artwork only. Functional buttons and meters
+  are JUCE controls painted on top of it.
 
-IF THE BUILD FAILS
-Open the failed GitHub Actions run, select "Windows x64 Release",
-expand the red step, and read/copy the first error.
+LIMITATIONS
+- Effect presets are built-in choices, not a save-custom-preset system.
+- The current compressor, de-esser and gate are prototype DSP and need
+  listening/measurement tests for musical accuracy.
+- Spectrum is an FFT snapshot, not a calibrated loudness analyzer.
+- No claim of commercial-grade mastering, tuning, harmony-generation,
+  independent module bypasses or microphone capture outside FL Studio.
+- FL Studio sends audio to this VST3; a live microphone requires routing
+  the microphone to the same mixer insert.
 
-IF THE WRONG GUI APPEARS
-Check that the GitHub Actions run is NEWER than the "Package DreamVox 5
-bundle separately from original DreamVox" commit and that you installed
-"DreamVox 5.vst3" from that exact successful run, not a renamed old bundle.
-Close and reopen FL Studio after replacing the new bundle.
-
-This is a development build, not a validated commercial release.
-Test controls and audio carefully before using it in a production project.
+If the build fails, open its GitHub Actions run and read the FIRST error
+from the Build VST3 or Prepare downloadable plug-in step.
