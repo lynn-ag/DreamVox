@@ -14,7 +14,7 @@ struct Settings
 {
     double input=0, bass=0, clarity=0, smooth=0, air=0, glue=0;
     double width=100, drive=0, ceiling=-1;
-    bool lowCut=false, bypass=false, truePeak=false;
+    bool lowCut=false, bypass=false, truePeak=false, autoMaster=true, levelMatchBypass=true;
 };
 
 struct Biquad
@@ -66,7 +66,7 @@ public:
         bass.reset();mid.reset();air.reset();harsh.reset();cut.reset();
         truePeakDetector.prepare();
         harsh.band(sr,3800,.7);cut.highpass(sr,22);
-        settings={}; first=true; phase=0;envelope=harshEnv=sideLow=0;limiterGain=1;wetMix=1;cutMix=0;tpMargin=0;
+        settings={}; first=true; phase=0;envelope=harshEnv=sideLow=0;lowLevel=highLevel=0;lowState=0;bypassGain=1;limiterGain=1;wetMix=1;cutMix=0;tpMargin=0;
         inputPeak=outputPeak=rms=compressReduction=limitReduction=0;
         paramCoeff=std::exp(-1/(sr*.03));release=std::exp(-1/(sr*.12));
         attackComp=std::exp(-1/(sr*.03));releaseComp=std::exp(-1/(sr*.18));
@@ -80,7 +80,7 @@ public:
         if(size==0 || samples<=0 || channelCount<1) return;
         const int nc=std::min(channelCount,2);
         if(first) { settings=target;cutMix=target.lowCut?1:0;wetMix=target.bypass?0:1;first=false; }
-        double inPeak=0,outPeak=0,energy=0,maxComp=0,maxLimit=0;
+        double inPeak=0,outPeak=0,energy=0,dryEnergy=0,maxComp=0,maxLimit=0;
         for(int n=0;n<samples;++n)
         {
             auto smooth=[&](double& value,double wanted) { value=wanted+paramCoeff*(value-wanted); };
@@ -91,7 +91,7 @@ public:
             wetMix=(target.bypass?0.0:1.0)+mixCoeff*(wetMix-(target.bypass?0.0:1.0));
             // Avoid abrupt output-level jumps when high-fidelity limiting is toggled.
             tpMargin=(target.truePeak?.45:0.0)+paramCoeff*(tpMargin-(target.truePeak?.45:0.0));
-            if(phase==0) { bass.shelf(sr,100,settings.bass,false);mid.bell(sr,320,.75,-settings.clarity*.035);air.shelf(sr,10000,settings.air,true); }
+            if(phase==0)\n            {\n                const auto autoBass=settings.autoMaster?std::clamp((highLevel-lowLevel)*2.0,-1.25,1.25):0.0;\n                const auto autoAir=settings.autoMaster?std::clamp((lowLevel-highLevel)*1.5,-1.0,1.0):0.0;\n                bass.shelf(sr,100,settings.bass+autoBass,false);\n                mid.bell(sr,320,.75,-settings.clarity*.035);\n                air.shelf(sr,10000,settings.air+autoAir,true);\n            }
             phase=(phase+1)%32;
             std::array<double,2> x{},h{};
             const auto inGain=gain(settings.input);
@@ -102,7 +102,7 @@ public:
                 raw=std::clamp(raw,-64.0,64.0);
                 dry[static_cast<size_t>(pos)][ch]=raw;
                 inPeak=std::max(inPeak,std::abs(raw));
-                auto v=raw*inGain;
+                if(ch==0)\n                {\n                    const auto lowCoeff=std::exp(-2*3.141592653589793*140/sr);\n                    lowState=lowCoeff*lowState+(1-lowCoeff)*raw;\n                    const auto low=lowState*lowState;\n                    const auto high=(raw-lowState)*(raw-lowState);\n                    lowLevel=0.9995*lowLevel+0.0005*low;\n                    highLevel=0.9995*highLevel+0.0005*high;\n                }\n                auto v=raw*inGain;
                 const auto filtered=cut.tick(v,ch);v+=cutMix*(filtered-v);
                 x[ch]=air.tick(mid.tick(bass.tick(v,ch),ch),ch);
                 h[ch]=harsh.tick(x[ch],ch);
@@ -124,10 +124,7 @@ public:
             const auto ec=p>envelope?attackComp:releaseComp;
             envelope=ec*envelope+(1-ec)*p;
             // Gentle 1.5:1 compression, 6 dB knee, no automatic makeup, max 3 dB GR.
-            const auto over=db(envelope)-(-12-settings.glue*.12);
-            const auto curve=over<=-3?0:(over>=3?over/3:(over+3)*(over+3)/36);
-            const auto gr=std::min(3.0,curve)*settings.glue/100;
-            maxComp=std::max(maxComp,gr);
+            const auto adaptiveGlue=settings.autoMaster?std::clamp(0.35+0.0008*(db(envelope)+18),0.15,0.8):0.0;\n            const auto glueAmount=settings.autoMaster?std::max(settings.glue/100.0,adaptiveGlue):settings.glue/100.0;\n            const auto over=db(envelope)-(-12-settings.glue*.12);\n            const auto curve=over<=-3?0:(over>=3?over/3:(over+3)*(over+3)/36);\n            const auto gr=std::min(3.0,curve)*glueAmount;\n            maxComp=std::max(maxComp,gr);
             const auto preLimit=gain(settings.drive-gr);
             for(int ch=0;ch<nc;++ch) wet[static_cast<size_t>(pos)][ch]=x[ch]*preLimit;
             double peak=std::max(std::abs(x[0]*preLimit),std::abs(x[1]*preLimit));
@@ -157,16 +154,15 @@ public:
             {
                 const auto processed=wet[static_cast<size_t>(read)][ch]*limiterGain;
                 const auto bypassed=dry[static_cast<size_t>(read)][ch];
-                const auto y=bypassed+wetMix*(processed-bypassed);
-                channels[ch][n]=static_cast<float>(y);outPeak=std::max(outPeak,std::abs(y));energy+=y*y;
+                const auto matchedBypass=settings.levelMatchBypass?bypassed*bypassGain:bypassed;\n                const auto y=matchedBypass+wetMix*(processed-matchedBypass);
+                channels[ch][n]=static_cast<float>(y);outPeak=std::max(outPeak,std::abs(y));energy+=y*y;\n                dryEnergy+=bypassed*bypassed;
             }
             pos=read;
         }
         const auto fall=std::exp(-samples/(sr*.6));
         inputPeak=std::max(inPeak,inputPeak*fall);outputPeak=std::max(outPeak,outputPeak*fall);
         const auto rmsFall=std::exp(-samples/(sr*.3));
-        rms=std::sqrt(rmsFall*rms*rms+(1-rmsFall)*energy/(samples*nc));
-        compressReduction=std::max(maxComp,compressReduction*fall);limitReduction=std::max(maxLimit,limitReduction*fall);
+        rms=std::sqrt(rmsFall*rms*rms+(1-rmsFall)*energy/(samples*nc));\n        if(settings.levelMatchBypass && dryEnergy>1.0e-12 && energy>1.0e-12)\n        {\n            const auto wanted=std::clamp(std::sqrt(energy/dryEnergy),.5,2.0);\n            bypassGain=wanted+std::exp(-samples/(sr*.08))*(bypassGain-wanted);\n        }\n        compressReduction=std::max(maxComp,compressReduction*fall);limitReduction=std::max(maxLimit,limitReduction*fall);
     }
     double inputPeak=0,outputPeak=0,rms=0,compressReduction=0,limitReduction=0;
 private:
@@ -176,7 +172,7 @@ private:
     int delay=0,size=0,pos=0,qhead=0,qtail=0,phase=0;
     uint64_t counter=0;
     double sr=44100,paramCoeff=0,release=0,attackComp=0,releaseComp=0,attackHarsh=0,releaseHarsh=0,sideCoeff=0,mixCoeff=0;
-    double envelope=0,harshEnv=0,sideLow=0,limiterGain=1,wetMix=1,cutMix=0,tpMargin=0;
+    double envelope=0,harshEnv=0,sideLow=0,lowLevel=0,highLevel=0,lowState=0,bypassGain=1,limiterGain=1,wetMix=1,cutMix=0,tpMargin=0;
     bool first=true;
     Settings settings;
     Biquad bass,mid,air,harsh,cut;
