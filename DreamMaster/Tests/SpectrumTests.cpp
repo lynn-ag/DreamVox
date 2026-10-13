@@ -12,6 +12,10 @@ int main(){for(int sr:{44100,48000,96000}){
  for(int i=0;i<sr;++i){l[i]=.8f*std::sin(2*pi*440*i/sr);r[i]=-l[i];}
  for(int i=0;i<sr;i+=257){const float* p[]={l.data()+i,r.data()+i};spec.process(p,2,std::min(257,sr-i));}
  const auto bands=spec.relativeBandsDb();check(spec.valid());
+ dream::SpectrumSignature alt;alt.prepare(sr,2);
+ for(int i=0;i<sr;i+=4096){const float* q[]={l.data()+i,r.data()+i};alt.process(q,2,std::min(4096,sr-i));}
+ const auto again=alt.relativeBandsDb();
+ for(int b=0;b<dream::SpectrumSignature::bandCount;++b)check(std::abs(bands[b]-again[b])<1e-9);
  check(bands[3]>bands[1]+20&&bands[3]>bands[6]+25);
  check(std::isfinite(bands[3]));
  std::cout<<sr<<"Hz 440Hz band="<<bands[3]<<"dB\n";

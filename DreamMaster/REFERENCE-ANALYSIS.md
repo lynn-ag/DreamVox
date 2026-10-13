@@ -34,3 +34,8 @@ There is no cloud dependency, network connection, subscription, automatic upload
 The analyzer also measures nine-band relative power using an 8192-sample Hann-window FFT with 50% overlap. Band boundaries (Hz): 30, 80, 160, 315, 630, 1250, 2500, 5000, 10000, 20000. `spectral_bands_db` expresses each band's average power per FFT bin relative to the overall mean; unavailable bands are `null`. Stereo is analyzed per channel to avoid cancellation. `spectral_valid` indicates whether the audio was long enough for an FFT window.
 
 These are descriptive measurements, **not automatically safe EQ corrections**. Reference matching must avoid overfitting different instruments and arrangements.
+
+## Build a Personal Sonic DNA reference profile
+Create local analysis reports from **at least two** approved masters, preferably three to five stylistically related finished songs. Drag their `.dreammaster-analysis.json` files together onto `Create-Sonic-DNA.bat`, which uses the included `DreamMasterProfile.exe` and writes `DreamMaster-SonicDNA.json` in the tool folder without overwriting an existing profile. No audio is transmitted.
+
+The profile stores robust per-band medians and median absolute deviations (MAD), number of usable references in each band, and median loudness/stereo measurements. Variability warns that different tracks may not share one tonal target. This is **descriptive profile creation, not trained neural AI, not automatic EQ, and not completed reference-based mastering**. Future mastering recommendations must apply conservative limits and be reviewed by ear.

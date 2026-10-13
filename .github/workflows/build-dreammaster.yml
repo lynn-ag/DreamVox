@@ -25,7 +25,7 @@ jobs:
       - name: Configure
         run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
       - name: Build plugin and DSP tests
-        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterSpectrumTests DreamMasterRender DreamMasterAnalyze DreamMasterPreview --parallel 2
+        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterSpectrumTests DreamMasterProfileTests DreamMasterRender DreamMasterAnalyze DreamMasterProfile DreamMasterPreview --parallel 2
       - name: DSP regression tests
         run: |
           New-Item -ItemType Directory -Path validation -Force | Out-Null
@@ -35,6 +35,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Loudness / true-peak tests failed' }
           & ./master-build/Release/DreamMasterSpectrumTests.exe 2>&1 | Tee-Object validation/spectral-tests.txt
           if ($LASTEXITCODE -ne 0) { throw 'Spectral reference tests failed' }
+          & ./master-build/Release/DreamMasterProfileTests.exe 2>&1 | Tee-Object validation/profile-tests.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Robust Sonic DNA statistics tests failed' }
           $script = @'
           import math, struct, wave
           with wave.open('validation/analyzer-test.wav', 'wb') as w:
@@ -49,6 +51,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
           $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
           if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.spectral_valid -ne $true -or $analysis.spectral_bands_db.Count -ne 9 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
+          Copy-Item validation/analyzer.json validation/analyzer-second.json
+          & ./master-build/DreamMasterProfile_artefacts/Release/DreamMasterProfile.exe validation/analyzer.json validation/analyzer-second.json 2>&1 | Tee-Object validation/sonic-dna.json
+          if ($LASTEXITCODE -ne 0) { throw 'Sonic DNA reference profile smoke test failed' }
+          $profile = Get-Content validation/sonic-dna.json -Raw | ConvertFrom-Json
+          if ($profile.schema -ne 'dreammaster.sonic-dna.v1' -or $profile.reference_count -ne 2 -or $profile.tonal_median_db.Count -ne 9) { throw 'Invalid personal sound profile JSON' }
           & ./master-build/DreamMasterPreview_artefacts/Release/DreamMasterPreview.exe validation/DreamMaster-preview.png
           if ($LASTEXITCODE -ne 0) { throw 'Editor snapshot failed' }
       - name: Validate VST3 and editor
@@ -72,6 +79,8 @@ jobs:
           Get-FileHash staging/DreamMaster.vst3/Contents/x86_64-win/DreamMaster.vst3 | Format-List | Out-File staging/SHA256.txt
           Copy-Item master-build/Release/DreamMasterRender.exe,master-build/Release/DreamMasterTests.exe,master-build/Release/DreamMasterMeterTests.exe,master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe tools
           Copy-Item DreamMaster/Tools/Analyze-Reference.bat tools
+          Copy-Item DreamMaster/Tools/Create-Sonic-DNA.bat tools
+          Copy-Item master-build/DreamMasterProfile_artefacts/Release/DreamMasterProfile.exe,master-build/Release/DreamMasterProfileTests.exe tools
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: DreamMaster-Windows-x64-VST3
