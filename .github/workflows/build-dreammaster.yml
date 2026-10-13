@@ -6,6 +6,9 @@ on:
   pull_request:
     paths: ['DreamMaster/**', '.github/workflows/build-dreammaster.yml']
   workflow_dispatch:
+concurrency:
+  group: dm-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -22,7 +25,7 @@ jobs:
       - name: Configure
         run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
       - name: Build plugin and DSP tests
-        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterRender DreamMasterPreview --parallel 2
+        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterRender DreamMasterAnalyze DreamMasterPreview --parallel 2
       - name: DSP regression tests
         run: |
           New-Item -ItemType Directory -Path validation -Force | Out-Null
@@ -30,6 +33,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'DSP regression tests failed' }
           & ./master-build/Release/DreamMasterMeterTests.exe 2>&1 | Tee-Object validation/meter-tests.txt
           if ($LASTEXITCODE -ne 0) { throw 'Loudness / true-peak tests failed' }
+          @'
+import math, struct, wave
+with wave.open('validation/analyzer-test.wav', 'wb') as w:
+    w.setnchannels(2)
+    w.setsampwidth(2)
+    w.setframerate(48000)
+    values = (struct.pack('<hh', int(5000*math.sin(2*math.pi*440*i/48000)), int(5000*math.sin(2*math.pi*440*i/48000))) for i in range(48000))
+    w.writeframes(b''.join(values))
+'@ | python -
+          & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test.wav | Tee-Object validation/analyzer.json
+          if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
+          $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
+          if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
           & ./master-build/DreamMasterPreview_artefacts/Release/DreamMasterPreview.exe validation/DreamMaster-preview.png
           if ($LASTEXITCODE -ne 0) { throw 'Editor snapshot failed' }
       - name: Validate VST3 and editor
@@ -51,7 +67,7 @@ jobs:
           Copy-Item validation staging -Recurse
           "Source: ${{ github.sha }}`nBuild: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" | Set-Content staging/BUILD.txt
           Get-FileHash staging/DreamMaster.vst3/Contents/x86_64-win/DreamMaster.vst3 | Format-List | Out-File staging/SHA256.txt
-          Copy-Item master-build/Release/DreamMasterRender.exe,master-build/Release/DreamMasterTests.exe,master-build/Release/DreamMasterMeterTests.exe tools
+          Copy-Item master-build/Release/DreamMasterRender.exe,master-build/Release/DreamMasterTests.exe,master-build/Release/DreamMasterMeterTests.exe,master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe tools
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: DreamMaster-Windows-x64-VST3
