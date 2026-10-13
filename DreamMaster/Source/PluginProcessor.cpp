@@ -13,7 +13,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout DreamMasterProcessor::layout
     p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"lowcut",1},"Low cut",false));
     // Opt-in so existing FL Studio projects load with unchanged sound.
     p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"truepeak",1},"True peak limiting",false));
-    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"bypass",1},"Bypass",false));
+    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"bypass",1},"Bypass",false));\n    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"automaster",1},"Automatic mastering",true));\n    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"levelmatch",1},"Level-matched bypass",true));
     return p;
 }
 DreamMasterProcessor::DreamMasterProcessor()
@@ -33,7 +33,7 @@ void DreamMasterProcessor::render(juce::AudioBuffer<float>& b,bool hostBypass)
     auto v=[&](const char* id){return parameters.getRawParameterValue(id)->load();};
     dream::Settings s;
     s.input=v("input");s.bass=v("bass");s.clarity=v("clarity");s.smooth=v("smooth");s.air=v("air");
-    s.glue=v("glue");s.width=v("width");s.drive=v("drive");s.ceiling=v("ceiling");s.lowCut=v("lowcut")>.5f;s.truePeak=v("truepeak")>.5f;s.bypass=hostBypass||v("bypass")>.5f;
+    s.glue=v("glue");s.width=v("width");s.drive=v("drive");s.ceiling=v("ceiling");s.lowCut=v("lowcut")>.5f;s.truePeak=v("truepeak")>.5f;s.bypass=hostBypass||v("bypass")>.5f;s.autoMaster=v("automaster")>.5f;s.levelMatchBypass=!hostBypass&&v("levelmatch")>.5f;
     engine.process(b.getArrayOfWritePointers(),b.getNumChannels(),b.getNumSamples(),s);
     // Post-processing measurements: display real loudness and intersample peaks.
     // This does not change the sound or turn the existing sample-peak limiter into a true-peak limiter.
