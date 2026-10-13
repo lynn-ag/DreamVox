@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include "TruePeakDetector.h"
 
 namespace dream
 {
@@ -13,7 +14,7 @@ struct Settings
 {
     double input=0, bass=0, clarity=0, smooth=0, air=0, glue=0;
     double width=100, drive=0, ceiling=-1;
-    bool lowCut=false, bypass=false;
+    bool lowCut=false, bypass=false, truePeak=false;
 };
 
 struct Biquad
@@ -63,8 +64,9 @@ public:
         size=delay+1; wet.assign(static_cast<size_t>(size),{}); dry.assign(static_cast<size_t>(size),{});
         queue.assign(static_cast<size_t>(size+1),{}); qhead=qtail=pos=0;counter=0;
         bass.reset();mid.reset();air.reset();harsh.reset();cut.reset();
+        truePeakDetector.prepare();
         harsh.band(sr,3800,.7);cut.highpass(sr,22);
-        settings={}; first=true; phase=0;envelope=harshEnv=sideLow=0;limiterGain=1;wetMix=1;cutMix=0;
+        settings={}; first=true; phase=0;envelope=harshEnv=sideLow=0;limiterGain=1;wetMix=1;cutMix=0;tpMargin=0;
         inputPeak=outputPeak=rms=compressReduction=limitReduction=0;
         paramCoeff=std::exp(-1/(sr*.03));release=std::exp(-1/(sr*.12));
         attackComp=std::exp(-1/(sr*.03));releaseComp=std::exp(-1/(sr*.18));
@@ -87,6 +89,8 @@ public:
             smooth(settings.width,target.width);smooth(settings.drive,target.drive);smooth(settings.ceiling,target.ceiling);
             cutMix=(target.lowCut?1.0:0.0)+mixCoeff*(cutMix-(target.lowCut?1.0:0.0));
             wetMix=(target.bypass?0.0:1.0)+mixCoeff*(wetMix-(target.bypass?0.0:1.0));
+            // Avoid abrupt output-level jumps when high-fidelity limiting is toggled.
+            tpMargin=(target.truePeak?.45:0.0)+paramCoeff*(tpMargin-(target.truePeak?.45:0.0));
             if(phase==0) { bass.shelf(sr,100,settings.bass,false);mid.bell(sr,320,.75,-settings.clarity*.035);air.shelf(sr,10000,settings.air,true); }
             phase=(phase+1)%32;
             std::array<double,2> x{},h{};
@@ -126,7 +130,12 @@ public:
             maxComp=std::max(maxComp,gr);
             const auto preLimit=gain(settings.drive-gr);
             for(int ch=0;ch<nc;++ch) wet[static_cast<size_t>(pos)][ch]=x[ch]*preLimit;
-            const auto peak=std::max(std::abs(x[0]*preLimit),std::abs(x[1]*preLimit));
+            double peak=std::max(std::abs(x[0]*preLimit),std::abs(x[1]*preLimit));
+            if(target.truePeak)
+            {
+                const auto& delayed=wet[static_cast<size_t>(pos)];
+                peak=std::max(peak,truePeakDetector.push(delayed[0],delayed[1],nc));
+            }
             // Monotonic queue: maximum stereo peak over the entire lookahead window.
             const auto qsize=static_cast<int>(queue.size());
             while(qhead!=qtail && queue[static_cast<size_t>(qhead)].index+static_cast<uint64_t>(delay)<counter) qhead=(qhead+1)%qsize;
@@ -137,7 +146,9 @@ public:
                 qtail=back;
             }
             queue[static_cast<size_t>(qtail)]={counter++,peak};qtail=(qtail+1)%qsize;
-            const auto ceiling=gain(settings.ceiling);
+            // True-peak safety margin covers interpolation/variable-gain uncertainty.
+            // Legacy sample-peak mode remains bit-for-bit compatible by default.
+            const auto ceiling=gain(settings.ceiling-tpMargin);
             const auto wanted=std::min(1.0,ceiling/std::max(1.0e-12,queue[static_cast<size_t>(qhead)].value));
             limiterGain=std::min(wanted,release*limiterGain+(1-release)*wanted);
             maxLimit=std::max(maxLimit,-db(limiterGain));
@@ -165,9 +176,10 @@ private:
     int delay=0,size=0,pos=0,qhead=0,qtail=0,phase=0;
     uint64_t counter=0;
     double sr=44100,paramCoeff=0,release=0,attackComp=0,releaseComp=0,attackHarsh=0,releaseHarsh=0,sideCoeff=0,mixCoeff=0;
-    double envelope=0,harshEnv=0,sideLow=0,limiterGain=1,wetMix=1,cutMix=0;
+    double envelope=0,harshEnv=0,sideLow=0,limiterGain=1,wetMix=1,cutMix=0,tpMargin=0;
     bool first=true;
     Settings settings;
     Biquad bass,mid,air,harsh,cut;
+    TruePeakDetector truePeakDetector;
 };
 }
