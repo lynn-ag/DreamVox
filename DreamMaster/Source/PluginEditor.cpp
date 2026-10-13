@@ -30,11 +30,13 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
     presets.onChange=[this]{if(presets.getSelectedId()>0){const int index=presets.getSelectedId()-1;processor.applyPreset(index);
         presetHelp.setText(juce::String("Starting point: ")+dream::presetName(index)+"  /  "+dream::presetHint(index),juce::dontSendNotification);
         presetHelp.setTooltip(presetHelp.getText());presets.setSelectedId(0,juce::dontSendNotification);}};
-    addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(zoom);
+    addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(tpMode);addAndMakeVisible(zoom);
     bypass.setTooltip("Latency-matched bypass. Loudness is not automatically matched.");
     lowCut.setTooltip("Optional 22 Hz high-pass filter for sub-rumble.");
+    tpMode.setTooltip("Optional 8x true-peak-informed lookahead limiting. Uses a conservative safety margin; reduces intersample overshoots but requires listening verification.");
     bypassAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"bypass",bypass);
     cutAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"lowcut",lowCut);
+    tpAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"truepeak",tpMode);
     zoom.addItemList({"80%","100%","125%"},1);zoom.setSelectedId(2,juce::dontSendNotification);
     zoom.onChange=[this]{const float scale=zoom.getSelectedId()==1?.8f:zoom.getSelectedId()==3?1.25f:1.f;setSize(int(1200*scale),int(780*scale));};
     setResizable(true,true);setResizeLimits(960,624,1500,975);getConstrainer()->setFixedAspectRatio(1200.0/780.0);
@@ -42,7 +44,7 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
 }
 DreamMasterEditor::~DreamMasterEditor(){stopTimer();setLookAndFeel(nullptr);}
 void DreamMasterEditor::resized() {
-    presetHelp.setBounds(245,110,935,38);presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);
+    presetHelp.setBounds(245,110,935,38);presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);tpMode.setBounds(744,706,169,25);
     night::place(controls[0],labels[0],25,493,100);night::place(controls[3],labels[3],129,493,100);
     night::place(controls[1],labels[1],242,476,96,98);night::place(controls[4],labels[4],342,476,96,98);night::place(controls[2],labels[2],291,593,96,78);
     night::place(controls[5],labels[5],457,493,115,133);night::place(controls[6],labels[6],598,493,115,133);
@@ -62,7 +64,7 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
     night::text(g,"Gentle harshness control",31,646,194,20,10,night::muted);
     night::text(g,"Stereo linked\nUp to 3 dB reduction",452,653,124,44,10,night::muted);
     night::text(g,"Protected low end\n100% = original",594,653,124,44,10,night::muted);
-    night::text(g,"Sample-peak ceiling\n5 ms lookahead",739,653,205,44,11,night::muted);
+    night::text(g,tpMode.getToggleState()?"8x true-peak predictor\n5 ms lookahead":"Sample-peak ceiling\n5 ms lookahead",739,653,205,44,11,night::muted);
     auto meter=[&](const char* label,float value,int y,bool reduction){
         if(!std::isfinite(value))value=-90.f;
         night::text(g,label,975,y,125,18,10,night::muted,juce::Justification::left);
