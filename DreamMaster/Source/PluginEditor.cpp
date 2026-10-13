@@ -78,5 +78,11 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
     meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
     night::text(g,"TP: dBTP / Loudness: LUFS / GR: dB",974,681,193,18,9,night::muted);
     const bool off=processor.parameters.getRawParameterValue("bypass")->load()>.5f;
-    night::footer(g,look,off?"BYPASSED  /  Original signal with matched latency":processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":"Suno: choose a starting point, adjust by ear, compare at a similar listening level.","DreamMaster  " JucePlugin_VersionString);
+    const float ceiling=processor.parameters.getRawParameterValue("ceiling")->load();
+    const bool overshoot=processor.tpDb.load()>ceiling+.2f;
+    const char* status=off?"BYPASSED  /  Original signal with matched latency":
+        overshoot?"TRUE PEAK WARNING: intersample overshoot; current limiter is sample-peak only.":
+        processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":
+        "Suno: choose a starting point, adjust by ear, compare at a similar listening level.";
+    night::footer(g,look,status,"DreamMaster  " JucePlugin_VersionString);
 }
