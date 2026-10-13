@@ -24,7 +24,7 @@ public:
             ||!std::isfinite(f.truePeakDbtp)||f.truePeakDbtp<-90||f.truePeakDbtp>30
             ||!std::isfinite(f.rmsDbfs)||f.rmsDbfs<-90||f.rmsDbfs>30
             ||!std::isfinite(f.correlation)||std::abs(f.correlation)>1.001)return false;
-        for(double x:f.spectral)if(!std::isfinite(x)||x<-90||x>90)return false;
+        for(double x:f.spectral)if(!std::isfinite(x)||x<-300||x>120)return false;
         data.push_back(f);return true;
     }
     SonicProfile build() const {

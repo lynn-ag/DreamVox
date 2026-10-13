@@ -18,6 +18,8 @@ int main() {
  check(std::abs(p.tonalMad[0]-.5)<1e-12);
  check(p.tonalObservations[8]==3);
  check(std::abs(p.integratedLufs+15)<1e-12);
+ dream::SonicFeatures nearSilent=a;nearSilent.spectral[2]=-160;
+ check(b.add(nearSilent));
  dream::SonicFeatures bad=a;bad.correlation=2.0;
  check(!b.add(bad));
  std::cout<<"PASS robust median, MAD, unavailable high band, invalid input and loudness\n";
