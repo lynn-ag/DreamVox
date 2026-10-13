@@ -58,7 +58,6 @@ public:
             if (++pos3000==count3000) pos3000=0;
             ++frames;
             if (frames>=count400) {
-                momentary=toLufs(sum400/count400);
                 if ((frames-count400)%hop==0) {
                     const double mean=std::max(0.0, sum400/count400);
                     // Absolute gate: discard blocks below -70 LUFS.
@@ -69,8 +68,9 @@ public:
                     recomputeIntegrated();
                 }
             }
-            if (frames>=count3000) shortTerm=toLufs(sum3000/count3000);
         }
+        if (frames>=count400) momentary=toLufs(std::max(0.0,sum400/count400));
+        if (frames>=count3000) shortTerm=toLufs(std::max(0.0,sum3000/count3000));
     }
     double momentaryLufs() const { return momentary; }
     double shortTermLufs() const { return shortTerm; }
