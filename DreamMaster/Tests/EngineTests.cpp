@@ -1,4 +1,5 @@
 #include "../Source/Presets.h"
+#include "../Source/TruePeakMeter.h"
 #include <iostream>
 #include <random>
 #include <limits>
@@ -21,13 +22,14 @@ int main()
     for(const auto sr:{8000,44100,48000,96000,192000}) for(int nc:{1,2})
     {
         dream::MasterEngine e;e.prepare(sr);dream::Settings s;
+        s.autoMaster=false;s.levelMatchBypass=false;
         Audio input;for(auto& c:input)c.resize(static_cast<size_t>(sr));
         std::mt19937 rng(47);std::uniform_real_distribution<float> noise(-.1f,.1f);
         for(int i=0;i<sr;++i) { input[0][i]=noise(rng);input[1][i]=-.5f*input[0][i]; }
         const auto neutral=run(e,input,nc,127,s);
         for(int ch=0;ch<nc;++ch)for(int i=0;i<sr;++i)
             require(std::abs(neutral[ch][i]-(i<e.latency()?0:input[ch][i-e.latency()]))<1.e-6f,"Neutral is not delayed unity");
-        s.bypass=true;s.input=6;s.bass=3;s.clarity=100;s.smooth=100;s.air=3;s.glue=100;s.width=120;s.drive=9;s.lowCut=true;
+        s.bypass=true;s.levelMatchBypass=false;s.input=6;s.bass=3;s.clarity=100;s.smooth=100;s.air=3;s.glue=100;s.width=120;s.drive=9;s.lowCut=true;
         e.prepare(sr);const auto bypass=run(e,input,nc,512,s);
         for(int ch=0;ch<nc;++ch)for(int i=0;i<sr;++i)
             require(std::abs(bypass[ch][i]-(i<e.latency()?0:input[ch][i-e.latency()]))<1.e-6f,"Bypass is not delayed original");
@@ -55,6 +57,11 @@ int main()
         e.prepare(sr);Audio silence;for(auto& c:silence)c.resize(5000);
         const auto quiet=run(e,silence,nc,256,s);
         for(int ch=0;ch<nc;++ch)for(auto v:quiet[ch])require(v==0,"Reset silence is not silent");
+        s={};s.autoMaster=true;s.ceiling=-1;
+        e.prepare(sr);
+        const auto adaptive=run(e,input,nc,97,s);
+        for(int ch=0;ch<nc;++ch)for(auto v:adaptive[ch])
+            require(std::isfinite(v)&&std::abs(v)<=1.0f+1.e-5f,"Automatic mastering produced unsafe output");
         std::cout<<"PASS "<<sr<<" Hz, "<<nc<<" channels: unity, latency, bypass, ceiling, stereo link, block sizes, automation, reset\n";
     }
     // Exercise every preset on over-level, transient-rich stereo/mono material.
@@ -76,6 +83,40 @@ int main()
         require(energy>0.01,"Preset unexpectedly muted audio");
     }
     std::cout<<"PASS all 13 presets: finite output, sample ceiling, non-silent output at 4 sample rates in mono/stereo\n";
+    // Opt-in 8x TP detector predicts intersample peaks through 5ms lookahead.
+    // A quarter-sample-rate sinusoid at 45 degrees has ~-3 dBFS sampled
+    // peaks but a near-0 dBTP reconstructed peak.
+    for(const auto sr:{44100,48000,96000})
+    {
+        dream::Settings s;s.ceiling=-1;s.truePeak=true;
+        Audio signal;for(auto& ch:signal)ch.resize(static_cast<size_t>(sr/4));
+        for(size_t i=0;i<signal[0].size();++i) {
+            signal[0][i]=static_cast<float>(std::sin(i*3.141592653589793/2+3.141592653589793/4));
+            signal[1][i]=-signal[0][i]*.8f;
+        }
+        dream::MasterEngine highQuality;highQuality.prepare(sr);
+        auto output=run(highQuality,signal,2,63,s);
+        dream::TruePeakMeter truePeak;truePeak.prepare(sr);
+        const float* ptr[]={output[0].data(),output[1].data()};
+        truePeak.process(ptr,2,static_cast<int>(output[0].size()));
+        require(truePeak.peakDbtp()<=s.ceiling+.15,"True-peak mode did not control intersample peaks");
+        const auto highQualityTP=truePeak.peakDbtp();
+        dream::MasterEngine legacy;legacy.prepare(sr);s.truePeak=false;
+        const auto oldOutput=run(legacy,signal,2,37,s);
+        truePeak.prepare(sr);
+        const float* oldPtr[]={oldOutput[0].data(),oldOutput[1].data()};
+        truePeak.process(oldPtr,2,static_cast<int>(oldOutput[0].size()));
+        require(truePeak.peakDbtp()>highQualityTP+.25,"True-peak prediction did not improve intersample overshoot");
+        // The oversampled prediction is deterministic across host block sizes.
+        s.truePeak=true;
+        dream::MasterEngine a,b;a.prepare(sr);b.prepare(sr);
+        const auto one=run(a,signal,2,1,s),many=run(b,signal,2,1024,s);
+        for(size_t i=0;i<signal[0].size();++i)
+            require(std::abs(one[0][i]-many[0][i])<1.e-6f
+                    &&std::abs(one[1][i]-many[1][i])<1.e-6f,
+                    "True-peak mode varies with host buffer partitioning");
+        std::cout<<"PASS opt-in true-peak limiter "<<sr<<" Hz, ceiling, improvement, deterministic blocks\n";
+    }
     std::cout<<"ALL DSP TESTS PASSED\n";return 0;
  } catch(const std::exception& ex) { std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1; }
 }

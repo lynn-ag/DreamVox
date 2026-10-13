@@ -16,9 +16,8 @@ private:
     std::array<juce::Label,9> labels;
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>,9> attachments;
     juce::ComboBox presets,zoom;
-    juce::Label presetHelp;
-    juce::ToggleButton bypass{"BYPASS"},lowCut{"LOW CUT 22 Hz"};
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment,cutAttachment;
+    juce::ToggleButton bypass{"BYPASS"},lowCut{"LOW CUT 22 Hz"},tpMode{"TP LIMIT"};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment,cutAttachment,tpAttachment;
     juce::TooltipWindow tips{this,500};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DreamMasterEditor)
 };

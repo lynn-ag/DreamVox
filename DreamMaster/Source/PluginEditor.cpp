@@ -18,23 +18,23 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
     for(int i=0;i<5;++i)presets.addItem(dream::presetName(i),i+1);
     presets.addSeparator();presets.addSectionHeading("Suno starting points");
     for(int i=5;i<dream::presetCount;++i)presets.addItem(dream::presetName(i),i+1);
-    presetHelp.setText("Suno presets are starting points. Choose by what you hear.",juce::dontSendNotification);
-    presetHelp.setJustificationType(juce::Justification::centred);
-    presetHelp.setColour(juce::Label::textColourId,night::white);
-    presetHelp.setColour(juce::Label::backgroundColourId,juce::Colour(0xe6101824));
-    presetHelp.setFont(juce::Font(juce::FontOptions(12.f)));
-    presetHelp.setMinimumHorizontalScale(.8f);
-    addAndMakeVisible(presetHelp);
-    presets.setTextWhenNothingSelected("Choose a mastering starting point...");
-    presets.setTooltip("Replaces processing settings. Adjust for each song.");
-    presets.onChange=[this]{if(presets.getSelectedId()>0){const int index=presets.getSelectedId()-1;processor.applyPreset(index);
-        presetHelp.setText(juce::String("Starting point: ")+dream::presetName(index)+"  /  "+dream::presetHint(index),juce::dontSendNotification);
-        presetHelp.setTooltip(presetHelp.getText());presets.setSelectedId(0,juce::dontSendNotification);}};
-    addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(zoom);
+    presets.setTextWhenNothingSelected("Choose a mastering preset...");
+    presets.setTooltip("Select a starting point. Adjust processing by ear.");
+    presets.onChange=[this] {
+        const int index=presets.getSelectedId()-1;
+        if(index<0 || index>=dream::presetCount)return;
+        processor.applyPreset(index);
+        // Keep the selection visible inside the ComboBox like a normal preset menu.
+        // The longer description stays available as a tooltip, not a separate banner.
+        presets.setTooltip(juce::String(dream::presetName(index))+": "+dream::presetHint(index));
+    };
+    addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(tpMode);addAndMakeVisible(zoom);
     bypass.setTooltip("Latency-matched bypass. Loudness is not automatically matched.");
     lowCut.setTooltip("Optional 22 Hz high-pass filter for sub-rumble.");
+    tpMode.setTooltip("Optional 8x true-peak-informed lookahead limiting. Uses a conservative safety margin; reduces intersample overshoots but requires listening verification.");
     bypassAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"bypass",bypass);
     cutAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"lowcut",lowCut);
+    tpAttachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,"truepeak",tpMode);
     zoom.addItemList({"80%","100%","125%"},1);zoom.setSelectedId(2,juce::dontSendNotification);
     zoom.onChange=[this]{const float scale=zoom.getSelectedId()==1?.8f:zoom.getSelectedId()==3?1.25f:1.f;setSize(int(1200*scale),int(780*scale));};
     setResizable(true,true);setResizeLimits(960,624,1500,975);getConstrainer()->setFixedAspectRatio(1200.0/780.0);
@@ -42,7 +42,7 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
 }
 DreamMasterEditor::~DreamMasterEditor(){stopTimer();setLookAndFeel(nullptr);}
 void DreamMasterEditor::resized() {
-    presetHelp.setBounds(245,110,935,38);presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);
+    presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);tpMode.setBounds(744,706,169,25);
     night::place(controls[0],labels[0],25,493,100);night::place(controls[3],labels[3],129,493,100);
     night::place(controls[1],labels[1],242,476,96,98);night::place(controls[4],labels[4],342,476,96,98);night::place(controls[2],labels[2],291,593,96,78);
     night::place(controls[5],labels[5],457,493,115,133);night::place(controls[6],labels[6],598,493,115,133);
@@ -62,7 +62,7 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
     night::text(g,"Gentle harshness control",31,646,194,20,10,night::muted);
     night::text(g,"Stereo linked\nUp to 3 dB reduction",452,653,124,44,10,night::muted);
     night::text(g,"Protected low end\n100% = original",594,653,124,44,10,night::muted);
-    night::text(g,"Sample-peak ceiling\n5 ms lookahead",739,653,205,44,11,night::muted);
+    night::text(g,tpMode.getToggleState()?"8x true-peak predictor\n5 ms lookahead":"Sample-peak ceiling\n5 ms lookahead",739,653,205,44,11,night::muted);
     auto meter=[&](const char* label,float value,int y,bool reduction){
         if(!std::isfinite(value))value=-90.f;
         night::text(g,label,975,y,125,18,10,night::muted,juce::Justification::left);
@@ -71,9 +71,18 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
         g.setColour(reduction?look.accent:look.blue);const float amount=juce::jlimit(0.f,1.f,reduction?value/9.f:(value+60.f)/60.f);
         g.fillRoundedRectangle(976,float(y+22),187*amount,5,2);
     };
-    meter("INPUT PEAK",processor.inDb.load(),480,false);meter("OUTPUT PEAK",processor.outDb.load(),521,false);
-    meter("OUTPUT RMS",processor.rmsDb.load(),562,false);meter("GLUE REDUCTION",processor.compDb.load(),603,true);meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
-    night::text(g,"Levels: dBFS  /  Reduction: dB",974,681,193,18,10,night::muted);
+    meter("TRUE PEAK",processor.tpDb.load(),480,false);
+    meter("SHORT LUFS",processor.shortLufs.load(),521,false);
+    meter("INTEG LUFS",processor.integratedLufs.load(),562,false);
+    meter("GLUE REDUCTION",processor.compDb.load(),603,true);
+    meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
+    night::text(g,"TP: dBTP / Loudness: LUFS / GR: dB",974,681,193,18,9,night::muted);
     const bool off=processor.parameters.getRawParameterValue("bypass")->load()>.5f;
-    night::footer(g,look,off?"BYPASSED  /  Original signal with matched latency":processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":"Suno: choose a starting point, adjust by ear, compare at a similar listening level.","DreamMaster  " JucePlugin_VersionString);
+    const float ceiling=processor.parameters.getRawParameterValue("ceiling")->load();
+    const bool overshoot=processor.tpDb.load()>ceiling+.2f;
+    const char* status=off?"BYPASSED  /  Original signal with matched latency":
+        overshoot?"TRUE PEAK WARNING: intersample overshoot; current limiter is sample-peak only.":
+        processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":
+        "Suno: choose a starting point, adjust by ear, compare at a similar listening level.";
+    night::footer(g,look,status,"DreamMaster  " JucePlugin_VersionString);
 }

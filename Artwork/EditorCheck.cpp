@@ -36,6 +36,8 @@ int main(int argc,char** argv) {
         require(presetMenu!=nullptr&&presetMenu->getNumItems()==dream::presetCount,"Missing preset options");
         for(int index=0;index<dream::presetCount;++index) {
             presetMenu->setSelectedId(index+1,juce::sendNotificationSync);
+            require(presetMenu->getSelectedId()==index+1,"Chosen preset does not remain selected in menu");
+            require(presetMenu->getText()==juce::String(dream::presetName(index)),"Preset name is not visible inside dropdown");
             const auto expected=dream::preset(index);
             const char* ids[]={"input","bass","clarity","smooth","air","glue","width","drive","ceiling","lowcut"};
             const double values[]={expected.input,expected.bass,expected.clarity,expected.smooth,expected.air,expected.glue,expected.width,expected.drive,expected.ceiling,expected.lowCut?1.0:0.0};
