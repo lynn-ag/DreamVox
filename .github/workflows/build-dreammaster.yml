@@ -34,14 +34,14 @@ jobs:
           & ./master-build/Release/DreamMasterMeterTests.exe 2>&1 | Tee-Object validation/meter-tests.txt
           if ($LASTEXITCODE -ne 0) { throw 'Loudness / true-peak tests failed' }
           @'
-import math, struct, wave
-with wave.open('validation/analyzer-test.wav', 'wb') as w:
-    w.setnchannels(2)
-    w.setsampwidth(2)
-    w.setframerate(48000)
-    values = (struct.pack('<hh', int(5000*math.sin(2*math.pi*440*i/48000)), int(5000*math.sin(2*math.pi*440*i/48000))) for i in range(48000))
-    w.writeframes(b''.join(values))
-'@ | python -
+          import math, struct, wave
+          with wave.open('validation/analyzer-test.wav', 'wb') as w:
+              w.setnchannels(2)
+              w.setsampwidth(2)
+              w.setframerate(48000)
+              values = (struct.pack('<hh', int(5000*math.sin(2*math.pi*440*i/48000)), int(5000*math.sin(2*math.pi*440*i/48000))) for i in range(48000))
+              w.writeframes(b''.join(values))
+          '@ | python -
           & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test.wav | Tee-Object validation/analyzer.json
           if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
           $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
