@@ -46,6 +46,9 @@ int main(int argc,char** argv)
         float zeros[64]{};const float* tail[]={zeros,zeros};truePeak.process(tail,2,64);
         maxTP=std::max(maxTP,truePeak.peakDbtp());
         if(!output)throw std::runtime_error("Audio write failed");
+        if(maxTP>s.ceiling+.2)
+            std::cerr<<"WARNING: reconstructed true peak is above the selected sample-peak ceiling by "
+                     <<(maxTP-s.ceiling)<<" dB; this is not yet a true-peak limiter.\n";
         std::cout<<"frames="<<frames<<" peak_dBFS="<<dream::db(peak)<<" max_limit_reduction_dB="<<maxGR
                  <<" integrated_LUFS="<<loudness.integratedLufs()
                  <<" max_true_peak_dBTP="<<maxTP<<"\n";return 0;
