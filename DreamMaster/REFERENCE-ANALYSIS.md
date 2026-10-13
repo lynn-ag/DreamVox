@@ -47,3 +47,15 @@ Build `DreamMaster-SonicDNA.json` from two or more **different** approved master
 The JSON contains each band's spectral difference, a 0–1 confidence estimate, an uncertainty-aware **conservative tonal hint** capped at ±1.5 dB, and descriptive loudness/correlation differences. Bands with fewer than two useful references, very low energy, or high variability do not produce speculative corrections.
 
 **This is not automatic EQ or trained AI.** Frequency differences may come from instrument choices, arrangement and artistic intent; the hints are for manual consideration at matched playback loudness. Audio files are never uploaded or altered.
+
+## Automatic mastering quality inspection (read-only)
+
+The analyzer also reports `crest_factor_db` (sample peak minus full-file RMS in dB), `peak_to_loudness_ratio_db` (estimated maximum true-peak dBTP minus integrated LUFS, or `null` where not measurable), left/right DC-offset fractions, and the number of frames with an absolute sample reaching at least 0.999.
+
+Its `quality_flags` array can contain:
+- `true_peak_above_full_scale` — reconstructed peaks over 0 dBTP
+- `significant_dc_offset` — an absolute per-channel average greater than 0.005 full scale
+- `many_near_full_scale_samples` — a relatively large count of samples approaching digital full scale
+- `strong_negative_stereo_correlation` — possible mono compatibility concern
+
+These are **diagnostic flags, not proof of clipping or poor sound**. Strong dynamics, wide or anti-correlated effects, and high loudness can be artistically intentional. None of these checks modifies the audio or decides how to master it. Full validation against independent published true-peak/loudness test vectors is still required before conformance claims.

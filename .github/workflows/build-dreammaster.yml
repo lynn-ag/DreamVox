@@ -48,11 +48,21 @@ jobs:
                   w.setframerate(48000)
                   values = (struct.pack('<hh', int(amp*math.sin(2*math.pi*freq*i/48000)), int(amp*math.sin(2*math.pi*freq*i/48000))) for i in range(48000))
                   w.writeframes(b''.join(values))
+          with wave.open('validation/analyzer-dc.wav', 'wb') as w:
+              w.setnchannels(2)
+              w.setsampwidth(2)
+              w.setframerate(48000)
+              w.writeframes(struct.pack('<hh', 2000, 2000) * 48000)
           '@
           $script | python -
           & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test.wav | Tee-Object validation/analyzer.json
           if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
           $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
+          if ($analysis.crest_factor_db -lt 2.5 -or $analysis.crest_factor_db -gt 3.5 -or $analysis.near_full_scale_frames -ne 0) { throw 'Invalid mastering quality inspection for sine test' }
+          & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-dc.wav | Tee-Object validation/analyzer-dc.json
+          if ($LASTEXITCODE -ne 0) { throw 'DC diagnostic analyzer failed' }
+          $dcCheck = Get-Content validation/analyzer-dc.json -Raw | ConvertFrom-Json
+          if ($dcCheck.quality_flags -notcontains 'significant_dc_offset') { throw 'DC offset quality warning was not reported' }
           if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.spectral_valid -ne $true -or $analysis.spectral_bands_db.Count -ne 9 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
           & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test-two.wav | Tee-Object validation/analyzer-second.json
           if ($LASTEXITCODE -ne 0) { throw 'Second reference analyzer smoke test failed' }
