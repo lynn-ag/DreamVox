@@ -7,7 +7,7 @@ controls, rather than an automatic mastering or source-repair system.
 Signal path: input trim, optional 22 Hz high-pass, 100 Hz bass shelf, broad
 320 Hz clarity cut, 10 kHz air shelf, dynamic 3.8 kHz smoothing, stereo width
 above the low-bass region, gentle linked compression, loudness gain, and a
-stereo-linked sample-peak limiter with 5 ms lookahead.
+stereo-linked sample-peak limiter with 5 ms lookahead.\n\nAutomatic mastering is enabled by default in the saved state. It uses the existing real-time envelope and broad-band energy followers, is bounded to gentle tonal moves, and does not attempt to copy a reference. The state switch is intentionally not exposed in this UI pass; manual controls remain available. Internal bypass can use approximate loudness matching for fair A/B comparison.
 
 The ceiling is in dBFS, not dBTP. This version does not provide true-peak limiting
 or LUFS metering. Its output meters display sample peaks and RMS. Leave headroom
