@@ -39,3 +39,11 @@ These are descriptive measurements, **not automatically safe EQ corrections**. R
 Create local analysis reports from **at least two** approved masters, preferably three to five stylistically related finished songs. Drag their `.dreammaster-analysis.json` files together onto `Create-Sonic-DNA.bat`, which uses the included `DreamMasterProfile.exe` and writes `DreamMaster-SonicDNA.json` in the tool folder without overwriting an existing profile. No audio is transmitted.
 
 The profile rejects identical feature sets (including copied analysis files) as independent references. The profile stores robust per-band medians and median absolute deviations (MAD), number of usable references in each band, and median loudness/stereo measurements. Variability warns that different tracks may not share one tonal target. This is **descriptive profile creation, not trained neural AI, not automatic EQ, and not completed reference-based mastering**. Future mastering recommendations must apply conservative limits and be reviewed by ear.
+
+## Compare a new song against Sonic DNA (read-only)
+
+Build `DreamMaster-SonicDNA.json` from two or more **different** approved masters. Analyze a new mix with `Analyze-Reference.bat`. Keep the profile next to `DreamMasterMatch.exe`, then drag the new `.dreammaster-analysis.json` file onto `Compare-Sonic-DNA.bat`. The utility writes a new non-overwriting `.dreammaster-match.json` beside the analysis report.
+
+The JSON contains each band's spectral difference, a 0–1 confidence estimate, an uncertainty-aware **conservative tonal hint** capped at ±1.5 dB, and descriptive loudness/correlation differences. Bands with fewer than two useful references, very low energy, or high variability do not produce speculative corrections.
+
+**This is not automatic EQ or trained AI.** Frequency differences may come from instrument choices, arrangement and artistic intent; the hints are for manual consideration at matched playback loudness. Audio files are never uploaded or altered.
