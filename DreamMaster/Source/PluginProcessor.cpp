@@ -13,7 +13,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout DreamMasterProcessor::layout
     p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"lowcut",1},"Low cut",false));
     // Opt-in so existing FL Studio projects load with unchanged sound.
     p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"truepeak",1},"True peak limiting",false));
-    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"bypass",1},"Bypass",false));\n    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"automaster",1},"Automatic mastering",true));\n    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"levelmatch",1},"Level-matched bypass",true));
+    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"bypass",1},"Bypass",false));
+    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"automaster",1},"Automatic mastering",true));
+    p.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"levelmatch",1},"Level-matched bypass",true));
     return p;
 }
 DreamMasterProcessor::DreamMasterProcessor()
