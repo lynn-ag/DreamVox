@@ -21,7 +21,8 @@ int main()
  try {
     for(const auto sr:{8000,44100,48000,96000,192000}) for(int nc:{1,2})
     {
-        dream::MasterEngine e;e.prepare(sr);dream::Settings s;\n        s.autoMaster=false;s.levelMatchBypass=false;
+        dream::MasterEngine e;e.prepare(sr);dream::Settings s;
+        s.autoMaster=false;s.levelMatchBypass=false;
         Audio input;for(auto& c:input)c.resize(static_cast<size_t>(sr));
         std::mt19937 rng(47);std::uniform_real_distribution<float> noise(-.1f,.1f);
         for(int i=0;i<sr;++i) { input[0][i]=noise(rng);input[1][i]=-.5f*input[0][i]; }
@@ -56,7 +57,12 @@ int main()
         e.prepare(sr);Audio silence;for(auto& c:silence)c.resize(5000);
         const auto quiet=run(e,silence,nc,256,s);
         for(int ch=0;ch<nc;++ch)for(auto v:quiet[ch])require(v==0,"Reset silence is not silent");
-        s={};s.autoMaster=true;s.ceiling=-1;\n        e.prepare(sr);\n        const auto adaptive=run(e,input,nc,97,s);\n        for(int ch=0;ch<nc;++ch)for(auto v:adaptive[ch])\n            require(std::isfinite(v)&&std::abs(v)<=1.0f+1.e-5f,"Automatic mastering produced unsafe output");\n        std::cout<<"PASS "<<sr<<" Hz, "<<nc<<" channels: unity, latency, bypass, ceiling, stereo link, block sizes, automation, reset\n";
+        s={};s.autoMaster=true;s.ceiling=-1;
+        e.prepare(sr);
+        const auto adaptive=run(e,input,nc,97,s);
+        for(int ch=0;ch<nc;++ch)for(auto v:adaptive[ch])
+            require(std::isfinite(v)&&std::abs(v)<=1.0f+1.e-5f,"Automatic mastering produced unsafe output");
+        std::cout<<"PASS "<<sr<<" Hz, "<<nc<<" channels: unity, latency, bypass, ceiling, stereo link, block sizes, automation, reset\n";
     }
     // Exercise every preset on over-level, transient-rich stereo/mono material.
     for(const auto sr:{44100,48000,96000,192000})for(int nc:{1,2})for(int index=0;index<dream::presetCount;++index)
