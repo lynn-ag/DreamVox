@@ -29,3 +29,8 @@ Meters need further independent published BS.1770 conformance validation before 
 ## Privacy and cost
 
 There is no cloud dependency, network connection, subscription, automatic upload or payment requirement. Reference matching, Sonic DNA profiles, AI optimization, and optional consent-based cloud enhancement are future development stages. They must remain opt-in and usable without subscription.
+
+## Broad spectral signature (development)
+The analyzer also measures nine-band relative power using an 8192-sample Hann-window FFT with 50% overlap. Band boundaries (Hz): 30, 80, 160, 315, 630, 1250, 2500, 5000, 10000, 20000. `spectral_bands_db` expresses each band's average power per FFT bin relative to the overall mean; unavailable bands are `null`. Stereo is analyzed per channel to avoid cancellation. `spectral_valid` indicates whether the audio was long enough for an FFT window.
+
+These are descriptive measurements, **not automatically safe EQ corrections**. Reference matching must avoid overfitting different instruments and arrangements.

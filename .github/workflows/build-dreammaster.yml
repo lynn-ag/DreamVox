@@ -25,7 +25,7 @@ jobs:
       - name: Configure
         run: cmake -S DreamMaster -B master-build -G "Visual Studio 17 2022" -A x64
       - name: Build plugin and DSP tests
-        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterRender DreamMasterAnalyze DreamMasterPreview --parallel 2
+        run: cmake --build master-build --config Release --target DreamMaster_VST3 DreamMasterTests DreamMasterMeterTests DreamMasterSpectrumTests DreamMasterRender DreamMasterAnalyze DreamMasterPreview --parallel 2
       - name: DSP regression tests
         run: |
           New-Item -ItemType Directory -Path validation -Force | Out-Null
@@ -33,6 +33,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'DSP regression tests failed' }
           & ./master-build/Release/DreamMasterMeterTests.exe 2>&1 | Tee-Object validation/meter-tests.txt
           if ($LASTEXITCODE -ne 0) { throw 'Loudness / true-peak tests failed' }
+          & ./master-build/Release/DreamMasterSpectrumTests.exe 2>&1 | Tee-Object validation/spectral-tests.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Spectral reference tests failed' }
           $script = @'
           import math, struct, wave
           with wave.open('validation/analyzer-test.wav', 'wb') as w:
@@ -46,7 +48,7 @@ jobs:
           & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test.wav | Tee-Object validation/analyzer.json
           if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
           $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
-          if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
+          if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.spectral_valid -ne $true -or $analysis.spectral_bands_db.Count -ne 9 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
           & ./master-build/DreamMasterPreview_artefacts/Release/DreamMasterPreview.exe validation/DreamMaster-preview.png
           if ($LASTEXITCODE -ne 0) { throw 'Editor snapshot failed' }
       - name: Validate VST3 and editor

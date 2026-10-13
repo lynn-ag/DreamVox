@@ -1,5 +1,6 @@
 #include "../Source/LoudnessMeter.h"
 #include "../Source/TruePeakMeter.h"
+#include "../Source/SpectrumSignature.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <algorithm>
 #include <cmath>
@@ -33,6 +34,8 @@ int main(int argc,char** argv)
         loudness.prepare(rate,nc);
         dream::TruePeakMeter truePeak;
         truePeak.prepare(rate);
+        dream::SpectrumSignature signature;
+        signature.prepare(rate,nc);
         juce::AudioBuffer<float> audio(2,4096);
         double energy=0,peak=0,sumL=0,sumR=0,cross=0;
         int64_t frames=0;
@@ -46,6 +49,7 @@ int main(int argc,char** argv)
             const auto* const* samples=audio.getArrayOfReadPointers();
             loudness.process(samples,nc,n);
             truePeak.process(samples,nc,n);
+            signature.process(samples,nc,n);
             maximumTruePeak=std::max(maximumTruePeak,truePeak.peakDbtp());
             for(int i=0;i<n;++i) {
                 const double l=std::isfinite(samples[0][i])?samples[0][i]:0;
@@ -73,8 +77,17 @@ int main(int argc,char** argv)
                  <<"\"max_true_peak_dbtp\":"<<maximumTruePeak<<","
                  <<"\"sample_peak_dbfs\":"<<20*std::log10(std::max(1e-9,peak))<<","
                  <<"\"rms_dbfs\":"<<20*std::log10(std::max(1e-9,rms))<<","
-                 <<"\"stereo_correlation\":"<<correlation<<","
-                 <<"\"loudness_valid\":"<<(frames>=static_cast<int64_t>(rate*.4)?"true":"false")
+                 <<R"("stereo_correlation":)"<<correlation<<",";
+        const auto bands=signature.relativeBandsDb();
+        std::cout<<R"("spectral_band_edges_hz":[30,80,160,315,630,1250,2500,5000,10000,20000],)";
+        std::cout<<R"("spectral_bands_db":[)";
+        for(int i=0;i<dream::SpectrumSignature::bandCount;++i){
+            if(i)std::cout<<",";
+            if(signature.valid()&&signature.hasBand(i))std::cout<<bands[i];
+            else std::cout<<"null";
+        }
+        std::cout<<R"(],"spectral_valid":)"<<(signature.valid()?"true":"false")<<","
+                 <<R"("loudness_valid":)"<<(frames>=static_cast<int64_t>(rate*.4)?"true":"false")
                  <<"}\n";
         return 0;
     } catch(const std::exception& e) {
