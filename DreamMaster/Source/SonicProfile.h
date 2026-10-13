@@ -25,6 +25,12 @@ public:
             ||!std::isfinite(f.rmsDbfs)||f.rmsDbfs<-90||f.rmsDbfs>30
             ||!std::isfinite(f.correlation)||std::abs(f.correlation)>1.001)return false;
         for(double x:f.spectral)if(!std::isfinite(x)||x<-300||x>120)return false;
+        // A copied analysis report must not count as another independent master.
+        // Exact full-feature duplicates are rejected, even under different filenames.
+        for(const auto& earlier:data)
+            if(earlier.spectral==f.spectral && earlier.integratedLufs==f.integratedLufs
+                && earlier.truePeakDbtp==f.truePeakDbtp && earlier.rmsDbfs==f.rmsDbfs
+                && earlier.correlation==f.correlation)return false;
         data.push_back(f);return true;
     }
     SonicProfile build() const {

@@ -39,19 +39,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Robust Sonic DNA statistics tests failed' }
           $script = @'
           import math, struct, wave
-          with wave.open('validation/analyzer-test.wav', 'wb') as w:
-              w.setnchannels(2)
-              w.setsampwidth(2)
-              w.setframerate(48000)
-              values = (struct.pack('<hh', int(5000*math.sin(2*math.pi*440*i/48000)), int(5000*math.sin(2*math.pi*440*i/48000))) for i in range(48000))
-              w.writeframes(b''.join(values))
+          for filename, freq, amp in [('validation/analyzer-test.wav', 440, 5000), ('validation/analyzer-test-two.wav', 880, 6500)]:
+              with wave.open(filename, 'wb') as w:
+                  w.setnchannels(2)
+                  w.setsampwidth(2)
+                  w.setframerate(48000)
+                  values = (struct.pack('<hh', int(amp*math.sin(2*math.pi*freq*i/48000)), int(amp*math.sin(2*math.pi*freq*i/48000))) for i in range(48000))
+                  w.writeframes(b''.join(values))
           '@
           $script | python -
           & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test.wav | Tee-Object validation/analyzer.json
           if ($LASTEXITCODE -ne 0) { throw 'Reference analyzer smoke test failed' }
           $analysis = Get-Content validation/analyzer.json -Raw | ConvertFrom-Json
           if ($analysis.schema -ne 'dreammaster.analysis.v1' -or $analysis.channels -ne 2 -or $analysis.spectral_valid -ne $true -or $analysis.spectral_bands_db.Count -ne 9 -or $analysis.integrated_lufs -gt -15 -or $analysis.integrated_lufs -lt -30) { throw 'Invalid reference analysis JSON' }
-          Copy-Item validation/analyzer.json validation/analyzer-second.json
+          & ./master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe validation/analyzer-test-two.wav | Tee-Object validation/analyzer-second.json
+          if ($LASTEXITCODE -ne 0) { throw 'Second reference analyzer smoke test failed' }
+          $analysis2 = Get-Content validation/analyzer-second.json -Raw | ConvertFrom-Json
+          if ($analysis2.schema -ne 'dreammaster.analysis.v1' -or $analysis2.spectral_valid -ne $true) { throw 'Invalid second analysis' }
+          if ($analysis.spectral_bands_db[3] -le ($analysis.spectral_bands_db[4]+5) -or $analysis2.spectral_bands_db[4] -le ($analysis2.spectral_bands_db[3]+5)) { throw 'Spectral signatures failed to distinguish 440Hz and 880Hz reference tones' }
           & ./master-build/DreamMasterProfile_artefacts/Release/DreamMasterProfile.exe validation/analyzer.json validation/analyzer-second.json 2>&1 | Tee-Object validation/sonic-dna.json
           if ($LASTEXITCODE -ne 0) { throw 'Sonic DNA reference profile smoke test failed' }
           $profile = Get-Content validation/sonic-dna.json -Raw | ConvertFrom-Json

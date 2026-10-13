@@ -18,6 +18,20 @@ int main(){for(int sr:{44100,48000,96000}){
  for(int b=0;b<dream::SpectrumSignature::bandCount;++b)check(std::abs(bands[b]-again[b])<1e-9);
  check(bands[3]>bands[1]+20&&bands[3]>bands[6]+25);
  check(std::isfinite(bands[3]));
+ // A spectral fingerprint is descriptive and should not change with gain.
+ std::vector<float> quieter=l;
+ for(float& x:quieter)x*=.25f;
+ dream::SpectrumSignature lower;lower.prepare(sr,1);
+ for(int i=0;i<sr;i+=317){const float* p[]={quieter.data()+i};lower.process(p,1,std::min(317,sr-i));}
+ const auto quieterBands=lower.relativeBandsDb();
+ for(int b=0;b<dream::SpectrumSignature::bandCount;++b)
+     if(bands[b]>-50&&quieterBands[b]>-50)check(std::abs(bands[b]-quieterBands[b])<.15);
+ // A phase-inverted stereo copy must not cancel in the spectral analyzer.
+ dream::SpectrumSignature mono;mono.prepare(sr,1);
+ for(int i=0;i<sr;i+=777){const float* p[]={l.data()+i};mono.process(p,1,std::min(777,sr-i));}
+ const auto monoBands=mono.relativeBandsDb();
+ for(int b=0;b<dream::SpectrumSignature::bandCount;++b)
+     check(std::abs(bands[b]-monoBands[b])<.01);
  std::cout<<sr<<"Hz 440Hz band="<<bands[3]<<"dB\n";
  }
  dream::SpectrumSignature silence;silence.prepare(48000,1);
