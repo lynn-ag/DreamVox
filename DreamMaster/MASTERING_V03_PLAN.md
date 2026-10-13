@@ -33,5 +33,19 @@ This branch preserves v0.2.1 and the Suno presets. Do not merge until audio test
 - ITU-R BS.1770-5: https://www.itu.int/rec/R-REC-BS.1770-5-202311-I/en
 - EBU R 128: https://tech.ebu.ch/publications/r128
 
-## Status
-Planning and branch isolation complete. DSP features in this document are **not implemented yet**.
+## Implemented on the separate development branch
+- Streaming BS.1770 K-weighted meter with EBU R128-style absolute and relative gated integrated LUFS, 400 ms momentary and 3 s short-term values.
+- A 4x, 48-tap FIR-based true-peak ESTIMATOR (not a true-peak limiter). Output TP, short LUFS, integrated LUFS and overshoot warning are connected to the VST3 UI.
+- Mono/stereo meter regression tests at 8, 44.1, 48, 96 and 192 kHz, compiled and passed locally.
+- Independent synthetic-signal loudness comparison against pyloudnorm within approximately 0.05 LU at 44.1, 48 and 96 kHz.
+- Offline master-render utility reports integrated LUFS and maximum estimated TP, and warns about intersample overshoots.
+- Windows GitHub Actions adds meter regression testing. CI triggers are constrained to reduce duplicate Windows builds.
+
+## Not implemented yet / release gates
+- The current limiter remains sample-peak only. The estimated TP readout does NOT make output true-peak-safe.
+- Formal published conformance vectors, independent true-peak verification, Windows VST3 build and pluginval must pass for the current head commit.
+- Level-matched A/B, dynamic EQ, adaptive mastering, reference matching, Personal Sonic DNA, Atmosphere Guardian and automatic candidate selection remain planned features.
+- Optional cloud AI is deferred until the offline core passes validation. It must require explicit upload/cost consent, avoid unexpected data retention, and always support offline fallback.
+
+## Current status
+Phase 0 code audit completed for the mastering subsystem and initial Phase 1 metering implemented and locally tested. Keep this pull request in draft until Windows CI and FL Studio compatibility tests are confirmed. Do not overwrite the user's working VST3.
