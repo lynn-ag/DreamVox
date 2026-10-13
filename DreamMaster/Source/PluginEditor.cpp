@@ -18,18 +18,16 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
     for(int i=0;i<5;++i)presets.addItem(dream::presetName(i),i+1);
     presets.addSeparator();presets.addSectionHeading("Suno starting points");
     for(int i=5;i<dream::presetCount;++i)presets.addItem(dream::presetName(i),i+1);
-    presetHelp.setText("Suno presets are starting points. Choose by what you hear.",juce::dontSendNotification);
-    presetHelp.setJustificationType(juce::Justification::centred);
-    presetHelp.setColour(juce::Label::textColourId,night::white);
-    presetHelp.setColour(juce::Label::backgroundColourId,juce::Colour(0xe6101824));
-    presetHelp.setFont(juce::Font(juce::FontOptions(12.f)));
-    presetHelp.setMinimumHorizontalScale(.8f);
-    addAndMakeVisible(presetHelp);
-    presets.setTextWhenNothingSelected("Choose a mastering starting point...");
-    presets.setTooltip("Replaces processing settings. Adjust for each song.");
-    presets.onChange=[this]{if(presets.getSelectedId()>0){const int index=presets.getSelectedId()-1;processor.applyPreset(index);
-        presetHelp.setText(juce::String("Starting point: ")+dream::presetName(index)+"  /  "+dream::presetHint(index),juce::dontSendNotification);
-        presetHelp.setTooltip(presetHelp.getText());presets.setSelectedId(0,juce::dontSendNotification);}};
+    presets.setTextWhenNothingSelected("Choose a mastering preset...");
+    presets.setTooltip("Select a starting point. Adjust processing by ear.");
+    presets.onChange=[this] {
+        const int index=presets.getSelectedId()-1;
+        if(index<0 || index>=dream::presetCount)return;
+        processor.applyPreset(index);
+        // Keep the selection visible inside the ComboBox like a normal preset menu.
+        // The longer description stays available as a tooltip, not a separate banner.
+        presets.setTooltip(juce::String(dream::presetName(index))+": "+dream::presetHint(index));
+    };
     addAndMakeVisible(presets);addAndMakeVisible(bypass);addAndMakeVisible(lowCut);addAndMakeVisible(tpMode);addAndMakeVisible(zoom);
     bypass.setTooltip("Latency-matched bypass. Loudness is not automatically matched.");
     lowCut.setTooltip("Optional 22 Hz high-pass filter for sub-rumble.");
@@ -44,7 +42,7 @@ DreamMasterEditor::DreamMasterEditor(DreamMasterProcessor& p):AudioProcessorEdit
 }
 DreamMasterEditor::~DreamMasterEditor(){stopTimer();setLookAndFeel(nullptr);}
 void DreamMasterEditor::resized() {
-    presetHelp.setBounds(245,110,935,38);presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);tpMode.setBounds(744,706,169,25);
+    presets.setBounds(425,65,376,28);bypass.setBounds(899,28,132,28);zoom.setBounds(1061,28,90,28);lowCut.setBounds(38,668,173,28);tpMode.setBounds(744,706,169,25);
     night::place(controls[0],labels[0],25,493,100);night::place(controls[3],labels[3],129,493,100);
     night::place(controls[1],labels[1],242,476,96,98);night::place(controls[4],labels[4],342,476,96,98);night::place(controls[2],labels[2],291,593,96,78);
     night::place(controls[5],labels[5],457,493,115,133);night::place(controls[6],labels[6],598,493,115,133);
