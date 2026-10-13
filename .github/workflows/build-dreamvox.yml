@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   windows-vst3:
+    # Mastering-only PRs must not spend Windows minutes rebuilding DreamVox.
+    if: github.head_ref != 'codex/dreammaster-mastering-engine-v03' && github.ref_name != 'codex/dreammaster-mastering-engine-v03'
     name: Windows x64 Release
     runs-on: windows-2022
     timeout-minutes: 30

@@ -68,6 +68,7 @@ jobs:
           "Source: ${{ github.sha }}`nBuild: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" | Set-Content staging/BUILD.txt
           Get-FileHash staging/DreamMaster.vst3/Contents/x86_64-win/DreamMaster.vst3 | Format-List | Out-File staging/SHA256.txt
           Copy-Item master-build/Release/DreamMasterRender.exe,master-build/Release/DreamMasterTests.exe,master-build/Release/DreamMasterMeterTests.exe,master-build/DreamMasterAnalyze_artefacts/Release/DreamMasterAnalyze.exe tools
+          Copy-Item DreamMaster/Tools/Analyze-Reference.bat tools
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: DreamMaster-Windows-x64-VST3

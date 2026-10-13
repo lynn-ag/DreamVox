@@ -27,7 +27,7 @@ int main(int argc,char** argv)
         if(!reader)throw std::runtime_error("Unsupported or unreadable audio file");
         const double rate=reader->sampleRate;
         const int nc=static_cast<int>(std::min(2u,reader->numChannels));
-        if(rate<8000||rate>384000||nc<1||reader->lengthInSamples<=0)
+        if(rate<8000||rate>384000||nc<1||reader->numChannels>2||reader->lengthInSamples<=0)
             throw std::runtime_error("Unsupported sample rate, channel count or length");
         dream::LoudnessMeter loudness;
         loudness.prepare(rate,nc);
