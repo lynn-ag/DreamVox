@@ -71,9 +71,12 @@ void DreamMasterEditor::paint(juce::Graphics& g) {
         g.setColour(reduction?look.accent:look.blue);const float amount=juce::jlimit(0.f,1.f,reduction?value/9.f:(value+60.f)/60.f);
         g.fillRoundedRectangle(976,float(y+22),187*amount,5,2);
     };
-    meter("INPUT PEAK",processor.inDb.load(),480,false);meter("OUTPUT PEAK",processor.outDb.load(),521,false);
-    meter("OUTPUT RMS",processor.rmsDb.load(),562,false);meter("GLUE REDUCTION",processor.compDb.load(),603,true);meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
-    night::text(g,"Levels: dBFS  /  Reduction: dB",974,681,193,18,10,night::muted);
+    meter("TRUE PEAK",processor.tpDb.load(),480,false);
+    meter("SHORT LUFS",processor.shortLufs.load(),521,false);
+    meter("INTEG LUFS",processor.integratedLufs.load(),562,false);
+    meter("GLUE REDUCTION",processor.compDb.load(),603,true);
+    meter("LIMIT REDUCTION",processor.limitDb.load(),644,true);
+    night::text(g,"TP: dBTP / Loudness: LUFS / GR: dB",974,681,193,18,9,night::muted);
     const bool off=processor.parameters.getRawParameterValue("bypass")->load()>.5f;
     night::footer(g,look,off?"BYPASSED  /  Original signal with matched latency":processor.limitDb.load()>3?"Heavy limiting: reduce Loudness and compare at a similar listening level.":"Suno: choose a starting point, adjust by ear, compare at a similar listening level.","DreamMaster  " JucePlugin_VersionString);
 }
