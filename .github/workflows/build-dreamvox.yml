@@ -2,8 +2,14 @@ name: Build DreamVox VST3
 
 on:
   push:
+    paths: ['DreamVox-v0.1/**', 'Artwork/**', '.github/workflows/build-dreamvox.yml']
   pull_request:
+    paths: ['DreamVox-v0.1/**', 'Artwork/**', '.github/workflows/build-dreamvox.yml']
   workflow_dispatch:
+
+concurrency:
+  group: dreamvox-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
