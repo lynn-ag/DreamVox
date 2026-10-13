@@ -1,4 +1,6 @@
 #include "../Source/Presets.h"
+#include "../Source/LoudnessMeter.h"
+#include "../Source/TruePeakMeter.h"
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -12,14 +14,22 @@ int main(int argc,char** argv)
         if(!input||!output)throw std::runtime_error("Cannot open audio file");
         const auto sr=std::stod(argv[3]);if(sr<8000||sr>384000)throw std::runtime_error("Unsupported sample rate");
         dream::MasterEngine e;e.prepare(sr);auto s=dream::preset(std::stoi(argv[4]));s.drive=std::clamp(std::stod(argv[5]),0.0,9.0);
+        dream::LoudnessMeter loudness;loudness.prepare(sr,2);
+        dream::TruePeakMeter truePeak;truePeak.prepare(sr);
         const int block=512;float interleaved[block*2],l[block],r[block];float* p[]={l,r};
-        int skip=e.latency();uint64_t frames=0;double peak=0,maxGR=0;
+        int skip=e.latency();uint64_t frames=0;double peak=0,maxGR=0,maxTP=-90;
         auto render=[&](int n)
         {
             e.process(p,2,n,s);maxGR=std::max(maxGR,e.limitReduction);
-            for(int i=0;i<n;++i)
-            {
-                if(skip>0){--skip;continue;}
+            const int remove=std::min(skip,n);
+            skip-=remove;
+            if(n>remove) {
+                const float* measured[]={l+remove,r+remove};
+                loudness.process(measured,2,n-remove);
+                truePeak.process(measured,2,n-remove);
+                maxTP=std::max(maxTP,truePeak.peakDbtp());
+            }
+            for(int i=remove;i<n;++i) {
                 float pair[]={l[i],r[i]};output.write(reinterpret_cast<const char*>(pair),sizeof(pair));
                 peak=std::max({peak,std::abs(static_cast<double>(l[i])),std::abs(static_cast<double>(r[i]))});
             }
@@ -32,7 +42,12 @@ int main(int argc,char** argv)
         }
         for(int remain=e.latency();remain>0;)
         {const int n=std::min(block,remain);std::fill_n(l,n,0);std::fill_n(r,n,0);render(n);remain-=n;}
+        // Include true-peak interpolation at the very end of the exported audio.
+        float zeros[64]{};const float* tail[]={zeros,zeros};truePeak.process(tail,2,64);
+        maxTP=std::max(maxTP,truePeak.peakDbtp());
         if(!output)throw std::runtime_error("Audio write failed");
-        std::cout<<"frames="<<frames<<" peak_dBFS="<<dream::db(peak)<<" max_limit_reduction_dB="<<maxGR<<"\n";return 0;
+        std::cout<<"frames="<<frames<<" peak_dBFS="<<dream::db(peak)<<" max_limit_reduction_dB="<<maxGR
+                 <<" integrated_LUFS="<<loudness.integratedLufs()
+                 <<" max_true_peak_dBTP="<<maxTP<<"\n";return 0;
     } catch(const std::exception& ex){std::cerr<<ex.what()<<"\n";return 1;}
 }
