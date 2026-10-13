@@ -1,6 +1,7 @@
 name: Build DreamMaster VST3
 on:
   push:
+    branches: ['main', 'codex/dreammaster-suno-presets']
     paths: ['DreamMaster/**', '.github/workflows/build-dreammaster.yml']
   pull_request:
     paths: ['DreamMaster/**', '.github/workflows/build-dreammaster.yml']
